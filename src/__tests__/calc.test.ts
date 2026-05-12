@@ -35,6 +35,7 @@ const briefBmw: Vehicle = {
   msrp: 57290,
   monthlyLease: 550,
   downPayment: 0,
+  apr: 0,
   efficiency: 28,
   isGas: true,
   monthlyInsurance: 225,
@@ -50,6 +51,7 @@ const briefIoniq: Vehicle = {
   msrp: 53000,
   monthlyLease: 425,
   downPayment: 0,
+  apr: 0,
   efficiency: 117,
   isGas: false,
   monthlyInsurance: 175,
@@ -198,15 +200,21 @@ describe("BRIEF §9 sanity-table reproduction (defaults + average prices)", () =
     expect(m.overage).toBeCloseTo(monthlyOverageCost(DEFAULT_DRIVING), 6);
 
     const expectedTotal =
-      m.lease + m.amortizedDown + m.fuel + m.insurance + m.maintenance + m.overage;
+      m.lease +
+      m.amortizedDown +
+      m.opportunityCost +
+      m.fuel +
+      m.insurance +
+      m.maintenance +
+      m.overage;
     expect(m.total).toBeCloseTo(expectedTotal, 6);
 
-    // For documentation / regression: with current defaults (lease=$450,
-    // down=$3,000, eff=105 MPGe, ins=$200, maint=$120/yr), Kia EV6 lands
-    // around $946.57/mo, $34,076/3yr. Lock it in with a wide tolerance so
-    // future defaults tweaks don't silently drift.
-    expect(r3(kia)).toBeGreaterThan(33_500);
-    expect(r3(kia)).toBeLessThan(34_500);
+    // For documentation / regression: with current iter3 defaults
+    // (lease=$450, down=$4,500, APR=7%, eff=105 MPGe, ins=$200, maint=
+    // $120/yr), Kia EV6 lands around $1,001/mo, $36,049/3yr. Lock it in
+    // with wide tolerance so future tweaks don't silently drift.
+    expect(r3(kia)).toBeGreaterThan(35_000);
+    expect(r3(kia)).toBeLessThan(37_500);
   });
 });
 

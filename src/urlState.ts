@@ -49,7 +49,10 @@ const VKEYS: Record<keyof Vehicle, string> = {
   color: "c",
   msrp: "p",
   monthlyLease: "l",
+  paymentMonthsRemaining: "tm",
   downPayment: "d",
+  buyoutAmount: "b",
+  expectedResaleValue: "rv",
   apr: "r",
   efficiency: "e",
   isGas: "g",
@@ -107,7 +110,25 @@ function decodeVehicle(s: string): Vehicle | null {
     color: get("color", "c") ?? "#94a3b8",
     msrp: Number(get("msrp", "p")) || 0,
     monthlyLease: Number(get("monthlyLease", "l")) || 0,
+    paymentMonthsRemaining: (() => {
+      const raw = obj["tm"];
+      if (raw === undefined) return base?.paymentMonthsRemaining;
+      const n = Number(raw);
+      return Number.isFinite(n) ? n : undefined;
+    })(),
     downPayment: Number(get("downPayment", "d")) || 0,
+    buyoutAmount: (() => {
+      const raw = obj["b"];
+      if (raw === undefined) return base?.buyoutAmount;
+      const n = Number(raw);
+      return Number.isFinite(n) ? n : undefined;
+    })(),
+    expectedResaleValue: (() => {
+      const raw = obj["rv"];
+      if (raw === undefined) return base?.expectedResaleValue;
+      const n = Number(raw);
+      return Number.isFinite(n) ? n : undefined;
+    })(),
     apr: Number(get("apr", "r")) || 0,
     efficiency: Number(get("efficiency", "e")) || 0,
     isGas: get("isGas", "g") as boolean,

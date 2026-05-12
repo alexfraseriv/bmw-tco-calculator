@@ -26,7 +26,7 @@ export function ShareBar() {
     <button
       type="button"
       onClick={copy}
-      className="rounded-md border border-line bg-panel2 px-3 py-1.5 text-xs text-muted hover:border-muted hover:text-white"
+      className="rounded-md border border-line bg-panel2 px-3 py-1.5 text-xs text-muted hover:border-muted hover:text-fg"
     >
       {copied ? "Link copied" : "Share this view"}
     </button>

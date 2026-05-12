@@ -13,8 +13,9 @@ import { ShareBar } from "./components/ShareBar";
 import { TcoChart } from "./components/TcoChart";
 import { VehicleCard } from "./components/VehicleCard";
 import { NumberInput } from "./components/NumberInput";
-import { computeTakeHome } from "./taxes";
+import { computeTakeHome, type TakeHomeBreakdown } from "./taxes";
 import type { EnergyScenario, Vehicle } from "./types";
+import type { ChartView } from "./urlState";
 import { useUrlState } from "./useUrlState";
 
 // A small palette for newly-added "blank" vehicles so the chart stays readable.
@@ -43,8 +44,38 @@ function makeBlankVehicle(existingIds: string[]): Vehicle {
 
 export default function App() {
   const [state, setState] = useUrlState();
-  const { vehicles, driving, scenarios, scenarioKey, annualSalary } = state;
-  const takeHome = useMemo(() => computeTakeHome(annualSalary), [annualSalary]);
+  const {
+    vehicles,
+    driving,
+    scenarios,
+    scenarioKey,
+    annualSalary,
+    monthlyTakeHomeOverride,
+    chartView,
+  } = state;
+  // Take-home: either the computed gross→net breakdown, or — when the user
+  // has entered take-home directly — a synthetic breakdown that fans the
+  // override out across the same fields the UI consumes. Keeps the rest of
+  // the app's "% of take-home" math one-size-fits-all.
+  const takeHome: TakeHomeBreakdown = useMemo(() => {
+    if (monthlyTakeHomeOverride > 0) {
+      const monthly = monthlyTakeHomeOverride;
+      const annual = monthly * 12;
+      return {
+        gross: annual,
+        federalTax: 0,
+        oregonTax: 0,
+        ficaSS: 0,
+        ficaMedicare: 0,
+        totalTax: 0,
+        annualTakeHome: annual,
+        monthlyTakeHome: monthly,
+        effectiveRate: 0,
+      };
+    }
+    return computeTakeHome(annualSalary);
+  }, [annualSalary, monthlyTakeHomeOverride]);
+  const usingTakeHomeOverride = monthlyTakeHomeOverride > 0;
 
   const activeScenario: EnergyScenario =
     scenarios.find((s) => s.key === scenarioKey) ?? scenarios[1];
@@ -178,17 +209,13 @@ export default function App() {
         )}
 
         {/* Compact chart — the visual argument. */}
-        <div className="rounded-2xl border border-line bg-panel p-3 sm:p-4">
-          <div className="flex items-baseline justify-between">
-            <h3 className="text-sm font-semibold">Cumulative cost</h3>
-            <span className="text-[10px] uppercase tracking-wider text-muted">
-              {activeScenario.label} energy · 0–36 mo
-            </span>
-          </div>
-          <div className="mt-1">
-            <TcoChart vehicles={vehicles} results={results} />
-          </div>
-        </div>
+        <ChartCard
+          view={chartView}
+          onChangeView={(v) => setState({ ...state, chartView: v })}
+          scenarioLabel={activeScenario.label}
+        >
+          <TcoChart vehicles={vehicles} results={results} view={chartView} />
+        </ChartCard>
 
         {/* Standings row — at-a-glance comparison. 2 cols on phone so 4
             vehicles fit cleanly without horizontal scroll. */}
@@ -270,7 +297,12 @@ export default function App() {
         <SalaryPanel
           annualSalary={annualSalary}
           takeHome={takeHome}
-          onChange={(s) => setState({ ...state, annualSalary: s })}
+          monthlyTakeHomeOverride={monthlyTakeHomeOverride}
+          usingOverride={usingTakeHomeOverride}
+          onChangeSalary={(s) => setState({ ...state, annualSalary: s })}
+          onChangeOverride={(n) =>
+            setState({ ...state, monthlyTakeHomeOverride: n })
+          }
           vehiclesMonthly={results.map((r, i) => ({
             name: vehicles[i]?.shortName ?? "",
             color: vehicles[i]?.color ?? "#888",
@@ -430,12 +462,18 @@ function ChevronDownIcon({ className }: { className?: string }) {
 function SalaryPanel({
   annualSalary,
   takeHome,
-  onChange,
+  monthlyTakeHomeOverride,
+  usingOverride,
+  onChangeSalary,
+  onChangeOverride,
   vehiclesMonthly,
 }: {
   annualSalary: number;
-  takeHome: ReturnType<typeof computeTakeHome>;
-  onChange: (n: number) => void;
+  takeHome: TakeHomeBreakdown;
+  monthlyTakeHomeOverride: number;
+  usingOverride: boolean;
+  onChangeSalary: (n: number) => void;
+  onChangeOverride: (n: number) => void;
   vehiclesMonthly: Array<{ name: string; color: string; monthly: number }>;
 }) {
   return (
@@ -443,18 +481,68 @@ function SalaryPanel({
       <div className="flex items-baseline justify-between">
         <h2 className="text-base font-semibold">Salary &amp; take-home</h2>
         <div className="text-[11px] text-muted">
-          Portland, OR · single filer · 2026 estimate
+          {usingOverride
+            ? "Take-home entered directly"
+            : "Portland, OR · single filer · 2026 estimate"}
         </div>
       </div>
+
+      {/* Mode toggle: gross-salary (compute tax) vs direct take-home entry. */}
+      <div className="mt-3 inline-flex rounded-full border border-line bg-panel2 p-0.5 text-[12px]">
+        <button
+          type="button"
+          onClick={() => onChangeOverride(0)}
+          aria-pressed={!usingOverride}
+          className={`rounded-full px-3 py-1 transition-colors ${
+            !usingOverride
+              ? "bg-panel font-semibold text-fg shadow-sm"
+              : "text-muted hover:text-fg"
+          }`}
+        >
+          Annual salary
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            // Seed with the currently-computed take-home so the input
+            // doesn't jump from $0 → user-typed when the user toggles in.
+            const seed =
+              monthlyTakeHomeOverride > 0
+                ? monthlyTakeHomeOverride
+                : Math.round(takeHome.monthlyTakeHome);
+            onChangeOverride(Math.max(1, seed));
+          }}
+          aria-pressed={usingOverride}
+          className={`rounded-full px-3 py-1 transition-colors ${
+            usingOverride
+              ? "bg-panel font-semibold text-fg shadow-sm"
+              : "text-muted hover:text-fg"
+          }`}
+        >
+          Take-home directly
+        </button>
+      </div>
+
       <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-3">
-        <NumberInput
-          label="Annual salary"
-          prefix="$"
-          value={annualSalary}
-          onChange={onChange}
-          step={1000}
-          min={0}
-        />
+        {usingOverride ? (
+          <NumberInput
+            label="Monthly take-home"
+            prefix="$"
+            value={monthlyTakeHomeOverride}
+            onChange={(n) => onChangeOverride(Math.max(0, n))}
+            step={100}
+            min={0}
+          />
+        ) : (
+          <NumberInput
+            label="Annual salary"
+            prefix="$"
+            value={annualSalary}
+            onChange={onChangeSalary}
+            step={1000}
+            min={0}
+          />
+        )}
         <div className="rounded-md border border-line bg-panel2 p-3">
           <div className="text-[11px] uppercase tracking-wider text-muted">
             Monthly take-home
@@ -463,8 +551,11 @@ function SalaryPanel({
             {fmtMoney(takeHome.monthlyTakeHome)}
           </div>
           <div className="mt-1 text-[11px] text-muted">
-            Federal + OR state + FICA · effective rate{" "}
-            {(takeHome.effectiveRate * 100).toFixed(1)}%
+            {usingOverride
+              ? "Entered directly — tax breakdown skipped"
+              : `Federal + OR state + FICA · effective rate ${(
+                  takeHome.effectiveRate * 100
+                ).toFixed(1)}%`}
           </div>
         </div>
         <div className="rounded-md border border-line bg-panel2 p-3">
@@ -475,9 +566,13 @@ function SalaryPanel({
             {fmtMoney(takeHome.annualTakeHome)}
           </div>
           <div className="mt-1 text-[11px] text-muted">
-            Tax: {fmtMoney(takeHome.totalTax)} (fed {fmtMoney(takeHome.federalTax)}{" "}
-            · OR {fmtMoney(takeHome.oregonTax)} · FICA{" "}
-            {fmtMoney(takeHome.ficaSS + takeHome.ficaMedicare)})
+            {usingOverride
+              ? "= monthly × 12"
+              : `Tax: ${fmtMoney(takeHome.totalTax)} (fed ${fmtMoney(
+                  takeHome.federalTax,
+                )} · OR ${fmtMoney(takeHome.oregonTax)} · FICA ${fmtMoney(
+                  takeHome.ficaSS + takeHome.ficaMedicare,
+                )})`}
           </div>
         </div>
       </div>
@@ -517,6 +612,88 @@ function SalaryPanel({
         </div>
       </div>
     </section>
+  );
+}
+
+// Chart card — wraps the chart with a magazine-style header (kicker +
+// title + sublabel) and a pill-style view toggle. Keeps a generous bottom
+// padding so the axis label / legend never crowd the card edge.
+function ChartCard({
+  view,
+  onChangeView,
+  scenarioLabel,
+  children,
+}: {
+  view: ChartView;
+  onChangeView: (v: ChartView) => void;
+  scenarioLabel: string;
+  children: React.ReactNode;
+}) {
+  const title =
+    view === "cumulative" ? "Cumulative cost" : "Cost per month";
+  const subtitle =
+    view === "cumulative"
+      ? "Total dollars out the door, accumulated through month 36"
+      : "Actual spend each month — payment step-downs and cash events visible";
+  return (
+    <div className="rounded-2xl border border-line bg-panel px-3 pb-4 pt-3 sm:px-5 sm:pb-5 sm:pt-4">
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        <div className="min-w-0">
+          <div className="text-[10px] uppercase tracking-[0.2em] text-muted">
+            {scenarioLabel} energy · 0–36 mo
+          </div>
+          <h3 className="mt-0.5 text-base font-semibold leading-tight sm:text-[17px]">
+            {title}
+          </h3>
+          <p className="mt-0.5 text-[11.5px] leading-snug text-muted sm:text-[12px]">
+            {subtitle}
+          </p>
+        </div>
+        <div
+          role="tablist"
+          aria-label="Chart view"
+          className="inline-flex shrink-0 rounded-full border border-line bg-panel2 p-0.5 text-[11px]"
+        >
+          <ChartViewTab
+            label="Cumulative"
+            active={view === "cumulative"}
+            onClick={() => onChangeView("cumulative")}
+          />
+          <ChartViewTab
+            label="Monthly"
+            active={view === "monthly"}
+            onClick={() => onChangeView("monthly")}
+          />
+        </div>
+      </div>
+      <div className="mt-3">{children}</div>
+    </div>
+  );
+}
+
+function ChartViewTab({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={`rounded-full px-3 py-1 transition-colors ${
+        active
+          ? "bg-panel font-semibold text-fg shadow-sm"
+          : "text-muted hover:text-fg"
+      }`}
+    >
+      {label}
+    </button>
   );
 }
 

@@ -12,12 +12,21 @@ import type {
   Vehicle,
 } from "./types";
 
+export type ChartView = "cumulative" | "monthly";
+
 export interface AppState {
   vehicles: Vehicle[];
   driving: DrivingProfile;
   scenarios: EnergyScenario[];
   scenarioKey: ScenarioKey;
   annualSalary: number;
+  // Optional monthly take-home override. When `> 0`, the salary panel and
+  // % bars use this value directly and bypass the gross→tax computation.
+  // 0 / undefined = derive from `annualSalary` as before. URL key: `th`.
+  monthlyTakeHomeOverride: number;
+  // Chart view selection. URL key: `cv` (chart view). `cumulative` is the
+  // historical default and stays unencoded to keep short URLs short.
+  chartView: ChartView;
 }
 
 const DEFAULT_SALARY = 185_000;
@@ -30,6 +39,8 @@ export function defaultState(): AppState {
     scenarios: DEFAULT_SCENARIOS.map((s) => ({ ...s })),
     scenarioKey: "average",
     annualSalary: DEFAULT_SALARY,
+    monthlyTakeHomeOverride: 0,
+    chartView: "cumulative",
   };
 }
 
@@ -208,6 +219,9 @@ export function encodeState(state: AppState): string {
   if (state.scenarioKey !== "average") sp.set("k", state.scenarioKey);
   if (state.annualSalary !== DEFAULT_SALARY)
     sp.set("y", String(Math.round(state.annualSalary)));
+  if (state.monthlyTakeHomeOverride > 0)
+    sp.set("th", String(Math.round(state.monthlyTakeHomeOverride)));
+  if (state.chartView === "monthly") sp.set("cv", "m");
   return sp.toString();
 }
 
@@ -240,6 +254,15 @@ export function decodeState(query: string): AppState {
     const y = Number(yRaw);
     if (Number.isFinite(y) && y > 0) base.annualSalary = y;
   }
+
+  const thRaw = sp.get("th");
+  if (thRaw) {
+    const th = Number(thRaw);
+    if (Number.isFinite(th) && th > 0) base.monthlyTakeHomeOverride = th;
+  }
+
+  const cvRaw = sp.get("cv");
+  if (cvRaw === "m") base.chartView = "monthly";
 
   return base;
 }

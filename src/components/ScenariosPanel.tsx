@@ -16,7 +16,7 @@ export function ScenariosPanel({
 }: Props) {
   return (
     <section className="rounded-xl border border-line bg-panel p-4">
-      <div className="flex items-baseline justify-between">
+      <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
         <h2 className="text-base font-semibold">Energy prices</h2>
         <div className="text-[11px] text-muted">
           Chart & totals use the highlighted scenario

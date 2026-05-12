@@ -59,6 +59,9 @@ const VKEYS: Record<keyof Vehicle, string> = {
   shortName: "s",
   color: "c",
   msrp: "p",
+  // financingType uses `ft` because `f` is already taken by fuelType.
+  // Only emitted when the value differs from the vehicle's default.
+  financingType: "ft",
   monthlyLease: "l",
   paymentMonthsRemaining: "tm",
   downPayment: "d",
@@ -146,6 +149,13 @@ function decodeVehicle(s: string): Vehicle | null {
     monthlyInsurance: Number(get("monthlyInsurance", "i")) || 0,
     annualMaintenance: Number(get("annualMaintenance", "m")) || 0,
     fuelType: (get("fuelType", "f") as Vehicle["fuelType"]) ?? "regular",
+    // financingType — accept only the known string values; anything else
+    // falls back to the vehicle's default (or `undefined`, meaning lease).
+    financingType: (() => {
+      const raw = obj["ft"];
+      if (raw === "lease" || raw === "loan") return raw;
+      return base?.financingType;
+    })(),
   };
   return v;
 }

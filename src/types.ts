@@ -3,12 +3,23 @@
 
 export type FuelType = "premium" | "regular" | "electric";
 
+// Lease vs loan distinction. Mileage caps only apply to leases; loans
+// (and "keep the current car" scenarios) own the vehicle, so the
+// `overage` line item is forced to 0 for loans regardless of driving
+// inputs. Default `lease` so existing URL params and tests keep the
+// previous semantics unless explicitly overridden.
+export type FinancingType = "lease" | "loan";
+
 export interface Vehicle {
   id: string;
   name: string;
   shortName: string; // for chart legend on mobile
   color: string; // hex
   msrp: number;
+  // How the vehicle is paid for. `lease`: monthly payment + mileage cap
+  // applies. `loan`: monthly payment + ownership at term end + no
+  // mileage cap. Defaults to "lease" when omitted.
+  financingType?: FinancingType;
   monthlyLease: number;
   // How many of the 36 comparison months still carry the lease/loan
   // payment. New leases: 36 (full window). For a "keep current car"

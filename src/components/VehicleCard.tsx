@@ -2,6 +2,7 @@ import { fmtMoney } from "../calc";
 import type {
   DrivingProfile,
   EnergyScenario,
+  FinancingType,
   Vehicle,
   VehicleResult,
 } from "../types";
@@ -32,6 +33,8 @@ export function VehicleCard({
   const saves = delta > 0;
   const adds = delta < 0;
   const efficiencyLabel = vehicle.isGas ? "MPG" : "MPGe";
+  const financing: FinancingType = vehicle.financingType ?? "lease";
+  const isLoan = financing === "loan";
 
   return (
     <article
@@ -39,15 +42,15 @@ export function VehicleCard({
       style={{ borderTopColor: vehicle.color, borderTopWidth: 3 }}
     >
       <header className="flex items-start justify-between gap-2">
-        <div>
+        <div className="min-w-0 flex-1">
           <input
             value={vehicle.name}
             onChange={(e) => onChange({ ...vehicle, name: e.target.value })}
             className="w-full bg-transparent text-base font-semibold outline-none"
           />
           <div className="text-[11px] text-muted">
-            {vehicle.isGas ? "Gas" : "Electric"} ·{" "}
-            {scenario.label} energy
+            {vehicle.isGas ? "Gas" : "Electric"} · {scenario.label} energy ·{" "}
+            {isLoan ? "Loan" : "Lease"}
           </div>
         </div>
         {onRemove && (
@@ -62,15 +65,36 @@ export function VehicleCard({
         )}
       </header>
 
-      <div className="mt-4 grid grid-cols-2 gap-3">
+      {/* Financing toggle — Lease vs Loan. Drives a couple of labels
+          ("Cash at signing" → "Down payment", "Monthly lease" → "Monthly
+          payment") and gates the mileage-overage line out of the result
+          breakdown when the user owns the car. */}
+      <div className="mt-3 inline-flex rounded-full border border-line bg-panel2 p-0.5 text-[11px]">
+        <FinancingTab
+          label="Lease"
+          active={financing === "lease"}
+          onClick={() =>
+            onChange({ ...vehicle, financingType: "lease" })
+          }
+        />
+        <FinancingTab
+          label="Loan"
+          active={financing === "loan"}
+          onClick={() =>
+            onChange({ ...vehicle, financingType: "loan" })
+          }
+        />
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-3">
         <NumberInput
-          label="Monthly lease"
+          label={isLoan ? "Monthly payment" : "Monthly lease"}
           value={vehicle.monthlyLease}
           onChange={(n) => onChange({ ...vehicle, monthlyLease: n })}
           prefix="$"
         />
         <NumberInput
-          label="Cash at signing"
+          label={isLoan ? "Down payment" : "Cash at signing"}
           value={vehicle.downPayment ?? 0}
           onChange={(n) => onChange({ ...vehicle, downPayment: n })}
           prefix="$"
@@ -104,7 +128,10 @@ export function VehicleCard({
       </div>
 
       <dl className="mt-4 space-y-1 text-[13px]">
-        <Row label="Lease (sticker)" v={result.monthly.lease} />
+        <Row
+          label={isLoan ? "Loan payment" : "Lease (sticker)"}
+          v={result.monthly.lease}
+        />
         {result.monthly.amortizedDown > 0 && (
           <Row
             label="Down ÷ 36 mo"
@@ -120,11 +147,15 @@ export function VehicleCard({
         <Row label={vehicle.isGas ? "Fuel" : "Electricity"} v={result.monthly.fuel} />
         <Row label="Insurance" v={result.monthly.insurance} />
         <Row label="Maintenance" v={result.monthly.maintenance} />
-        <Row
-          label="Mileage overage"
-          v={result.monthly.overage}
-          warn={result.monthly.overage > 0}
-        />
+        {/* Hide overage when zero — for loans it's always zero (no cap);
+            for under-cap leases there's nothing useful to surface. */}
+        {result.monthly.overage > 0 && (
+          <Row
+            label="Mileage overage"
+            v={result.monthly.overage}
+            warn
+          />
+        )}
         <div className="mt-2 flex items-center justify-between border-t border-line pt-2">
           <dt className="text-sm font-medium">Monthly total</dt>
           <dd className="font-mono text-base font-semibold">
@@ -174,5 +205,30 @@ function Row({ label, v, warn }: { label: string; v: number; warn?: boolean }) {
         {fmtMoney(v, v < 10 ? 2 : 0)}
       </dd>
     </div>
+  );
+}
+
+function FinancingTab({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`rounded-full px-3 py-1 transition-colors ${
+        active
+          ? "bg-panel font-semibold text-fg shadow-sm"
+          : "text-muted hover:text-fg"
+      }`}
+    >
+      {label}
+    </button>
   );
 }

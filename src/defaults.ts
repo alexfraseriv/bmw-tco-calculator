@@ -17,9 +17,12 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     shortName: "BMW 430i",
     color: "#3b82f6",
     msrp: 57290,
-    // BMW USA 36-mo / 12k-mi Coupe lease. User-quoted $550/mo headline only
-    // pencils with more cash up front than the $599 sign-and-drive variant:
-    // ~$5,500 due at signing buys down the payment by ~$50/mo over the term.
+    // The user is financing the 430i as a loan, not leasing — there's no
+    // mileage cap on a loan, and at month 36 the car is owned outright
+    // (not returned). The `monthlyLease` field still carries the loan
+    // payment; the field name predates the lease/loan distinction.
+    // $550/mo at the user's quoted terms with ~$5,500 down.
+    financingType: "loan",
     monthlyLease: 550,
     downPayment: 5500,
     apr: 7,
@@ -64,6 +67,10 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     shortName: "Current X1",
     color: "#a855f7",
     msrp: 0, // already paid for in prior years
+    // Financed loan, not a lease — no mileage cap. Already conceptually
+    // a financed car (paymentMonthsRemaining + resale path); this just
+    // makes it explicit so the calculator skips overage on it.
+    financingType: "loan",
     monthlyLease: 314,
     paymentMonthsRemaining: 14,
     downPayment: 0,

@@ -13,19 +13,20 @@ import type { DrivingProfile, EnergyScenario, Vehicle } from "./types";
 export const DEFAULT_VEHICLES: Vehicle[] = [
   {
     id: "bmw430i",
-    name: "BMW 430i (2026)",
-    shortName: "BMW 430i",
+    name: "BMW 4 Series (2025 demo, 9k mi)",
+    shortName: "BMW 4 Series",
     color: "#3b82f6",
-    msrp: 57290,
-    // The user is financing the 430i as a loan, not leasing — there's no
-    // mileage cap on a loan, and at month 36 the car is owned outright
-    // (not returned). The `monthlyLease` field still carries the loan
-    // payment; the field name predates the lease/loan distinction.
-    // $550/mo at the user's quoted terms with ~$5,500 down.
-    financingType: "loan",
-    monthlyLease: 550,
-    downPayment: 5500,
-    apr: 7,
+    // Pulled from the user's actual dealer worksheet (Option 1, lease,
+    // $0 down option circled). Negotiated price $49,999 + $215 doc fee +
+    // $423.63 DMV fees − $6,432 net trade equity → $45,204.63 balance
+    // capitalized into the lease. 36-mo @ money factor .0024
+    // (= 5.76% APR) → $558.57/mo at $0 down. 10k mi/yr allowance.
+    msrp: 49999,
+    financingType: "lease",
+    monthlyLease: 558.57,
+    downPayment: 0,
+    // 0.0024 × 2400 = 5.76% APR equivalent (money-factor convention).
+    apr: 5.76,
     efficiency: 28,
     isGas: true,
     monthlyInsurance: 225,
@@ -67,27 +68,29 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     shortName: "Current X1",
     color: "#a855f7",
     msrp: 0, // already paid for in prior years
-    // Financed loan, not a lease — no mileage cap. Already conceptually
-    // a financed car (paymentMonthsRemaining + resale path); this just
-    // makes it explicit so the calculator skips overage on it.
+    // Financed loan, not a lease — no mileage cap. Per the dealer worksheet:
+    // payoff $4,000, trade-in allowance $10,432 → net trade equity $6,432.
+    // Continuing to pay it out: ~$4,000 remaining / $314 ≈ 13 months of
+    // payments, then owned outright. Using 13 months below to match the
+    // worksheet payoff exactly (was 14 from earlier estimate).
     financingType: "loan",
     monthlyLease: 314,
-    paymentMonthsRemaining: 14,
+    paymentMonthsRemaining: 13,
     downPayment: 0,
     apr: 0,
-    // 2017 BMW X1 xDrive28i: EPA 25 MPG combined. Slightly worse than the
-    // new 430i because it's an older 4-cyl turbo.
     efficiency: 25,
     isGas: true,
-    monthlyInsurance: 150, // older car: comprehensive drops, liability rises
-    annualMaintenance: 1740, // RepairPal: maint $824 + repair $915 / yr
+    monthlyInsurance: 150,
+    annualMaintenance: 1740,
     fuelType: "premium",
-    // Financed car: no lease residual to buy out — once payments end at
-    // month 14, the user owns it free. If they sell, the full sale price
-    // is cash in pocket. Default sale price = $14k (low-miles premium
-    // over the KBB baseline of ~$11k for typical-mileage 2017 X1).
+    // Two sell-paths the user can choose between:
+    //   - Trade-in (dealer): $10,432 immediate offer (per worksheet).
+    //   - Private party (KBB low-mile): ~$13–16k after some legwork.
+    // Defaulting to the conservative trade-in figure so the calculator's
+    // "buy-and-sell" event uses the number the user has in hand. Bump
+    // `expectedResaleValue` toward $14k if modeling a private-party sale.
     buyoutAmount: 0,
-    expectedResaleValue: 14000,
+    expectedResaleValue: 10432,
   },
   {
     id: "kiaev6",
@@ -120,7 +123,10 @@ export const DEFAULT_DRIVING: DrivingProfile = {
   roundTripMiles: 352, // Portland <-> Bellevue, kept ready for the user
   tripsPerMonth: 0,
   otherMonthlyMiles: 350,
-  leaseAllowanceAnnual: 12000,
+  // The BMW lease worksheet shows a 10,000 mi/yr Mileage Program — the
+  // friend's actual cap, not the 12k industry-standard. Set the default
+  // to match so the overage warning fires honestly.
+  leaseAllowanceAnnual: 10000,
   overagePerMile: 0.25,
 };
 

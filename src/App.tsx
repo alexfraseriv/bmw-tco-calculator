@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   computeVehicleResult,
   fmtInt,
@@ -281,12 +281,23 @@ export default function App() {
         </button>
       </section>
 
+      {/* ───────── COMPARISON TABLE (read-out, above the editable inputs) ───────── */}
+      {/* Sortable side-by-side, sits between the hero and the editable
+          controls. Headline number → sortable detail → controls below. */}
+      <div className="mt-6">
+        <ComparisonTable
+          vehicles={vehicles}
+          results={results}
+          scenarioLabel={activeScenario.label}
+        />
+      </div>
+
       {/* ───────── EDIT / DETAIL ───────── */}
       <div ref={editRef} className="mt-8 scroll-mt-4 space-y-4">
         <SectionHeader
           kicker="Your inputs"
           title="Customize the numbers"
-          body="Everything below is editable. The hero and chart above react in real time, and the URL captures your scenario so the share link reflects exactly what you see."
+          body="Everything below is editable. The hero, chart, and comparison table above react in real time, and the URL captures your scenario so the share link reflects exactly what you see."
         />
 
         <DrivingPanel
@@ -382,12 +393,6 @@ export default function App() {
             })}
           </div>
         </section>
-
-        <ComparisonTable
-          vehicles={vehicles}
-          results={results}
-          scenarioLabel={activeScenario.label}
-        />
 
         {/* Work-travel reimbursement caveat — moved from top to here per the
             user's note that it's read-once context, not in-flight UI. */}
@@ -724,6 +729,104 @@ function ChartViewTab({
   );
 }
 
+// Column metadata for the comparison table. Each column knows how to read
+// its numeric value from a (vehicle, result) pair, so sort is a one-liner.
+type ComparisonRow = {
+  v: Vehicle;
+  r: ReturnType<typeof computeVehicleResult>;
+};
+type SortKey =
+  | "name"
+  | "threeYear"
+  | "leaseCash"
+  | "energy"
+  | "insurance"
+  | "maintenance"
+  | "overage"
+  | "monthly";
+
+interface ColumnDef {
+  key: SortKey;
+  label: string;
+  short: string;
+  // For sorting only — name uses a string compare, everything else numeric.
+  numeric: boolean;
+  value: (row: ComparisonRow) => number;
+  format: (row: ComparisonRow) => string;
+  // Highlight overage in warn color when nonzero.
+  cellClass?: (row: ComparisonRow) => string;
+}
+
+const COLUMNS: ColumnDef[] = [
+  {
+    key: "threeYear",
+    label: "3-yr total",
+    short: "3-yr",
+    numeric: true,
+    value: (row) => row.r.threeYearTotal,
+    format: (row) => fmtMoney(row.r.threeYearTotal),
+  },
+  {
+    key: "leaseCash",
+    label: "Lease + cash",
+    short: "Lease+cash",
+    numeric: true,
+    value: (row) =>
+      row.r.monthly.lease +
+      row.r.monthly.amortizedDown +
+      row.r.monthly.opportunityCost,
+    format: (row) =>
+      fmtMoney(
+        row.r.monthly.lease +
+          row.r.monthly.amortizedDown +
+          row.r.monthly.opportunityCost,
+      ),
+  },
+  {
+    key: "energy",
+    label: "Energy",
+    short: "Energy",
+    numeric: true,
+    value: (row) => row.r.monthly.fuel,
+    format: (row) => fmtMoney(row.r.monthly.fuel),
+  },
+  {
+    key: "insurance",
+    label: "Ins.",
+    short: "Ins.",
+    numeric: true,
+    value: (row) => row.r.monthly.insurance,
+    format: (row) => fmtMoney(row.r.monthly.insurance),
+  },
+  {
+    key: "maintenance",
+    label: "Maint.",
+    short: "Maint.",
+    numeric: true,
+    value: (row) => row.r.monthly.maintenance,
+    format: (row) => fmtMoney(row.r.monthly.maintenance),
+  },
+  {
+    key: "overage",
+    label: "Overage",
+    short: "Overage",
+    numeric: true,
+    value: (row) => row.r.monthly.overage,
+    format: (row) => fmtMoney(row.r.monthly.overage),
+    cellClass: (row) => (row.r.monthly.overage > 0 ? "text-warn" : ""),
+  },
+  {
+    key: "monthly",
+    label: "Monthly",
+    short: "Monthly",
+    numeric: true,
+    value: (row) => row.r.monthly.total,
+    format: (row) => fmtMoney(row.r.monthly.total),
+  },
+];
+
+type SortDir = "asc" | "desc";
+
 function ComparisonTable({
   vehicles,
   results,
@@ -733,75 +836,316 @@ function ComparisonTable({
   results: ReturnType<typeof computeVehicleResult>[];
   scenarioLabel: string;
 }) {
+  // Sort state is component-local — not URL-encoded; this is read-side
+  // affordance, not part of the share payload.
+  const [sortKey, setSortKey] = useState<SortKey>("threeYear");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const onHeaderClick = (key: SortKey) => {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      // Default direction: name sorts A→Z, numbers sort smallest-first
+      // (cheapest first, which is also what the user wants for cost cols).
+      setSortDir("asc");
+    }
+  };
+
+  const rows: ComparisonRow[] = vehicles
+    .map((v, i) => ({ v, r: results[i] }))
+    .filter((row) => !!row.r);
+
+  const sortedRows = useMemo(() => {
+    const copy = [...rows];
+    if (sortKey === "name") {
+      copy.sort((a, b) =>
+        a.v.shortName.localeCompare(b.v.shortName, undefined, {
+          sensitivity: "base",
+        }),
+      );
+    } else {
+      const col = COLUMNS.find((c) => c.key === sortKey);
+      if (col) copy.sort((a, b) => col.value(a) - col.value(b));
+    }
+    if (sortDir === "desc") copy.reverse();
+    return copy;
+    // rows is a freshly-built array each render, but eslint-react-hooks
+    // can't see that. Depending on the inputs that actually drive it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vehicles, results, sortKey, sortDir]);
+
   return (
-    <section className="rounded-xl border border-line bg-panel p-4">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-base font-semibold">
-          Monthly cost breakdown ({scenarioLabel.toLowerCase()} energy)
-        </h2>
-        <div className="text-[11px] text-muted">All figures in USD</div>
+    <section className="rounded-2xl border border-line bg-panel p-4 sm:p-5">
+      <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.2em] text-muted">
+            {scenarioLabel} energy · per month
+          </div>
+          <h2 className="mt-0.5 text-base font-semibold sm:text-[17px]">
+            Side-by-side breakdown
+          </h2>
+        </div>
+        <div className="text-[11px] text-muted">
+          Tap a header to sort
+        </div>
       </div>
-      <div className="mt-3 overflow-x-auto">
-        <table className="w-full min-w-[560px] text-sm">
+
+      {/* Phone: stacked cards. The full table demands ~560px just to read
+          without claustrophobia, so on narrow screens we trade column
+          density for full-width-friendly cards that surface 3-yr total
+          first and the per-month detail below. */}
+      <div className="mt-3 space-y-2 md:hidden">
+        <MobileSortBar
+          activeKey={sortKey}
+          dir={sortDir}
+          onChange={onHeaderClick}
+        />
+        {sortedRows.map((row) => (
+          <MobileVehicleRow key={row.v.id} row={row} />
+        ))}
+      </div>
+
+      {/* Tablet+: classic table, scrollable if it overflows but it
+          shouldn't at md:+. Sticky vehicle column so the row label
+          stays anchored if scrolling does occur. */}
+      <div className="mt-3 hidden overflow-x-auto md:block">
+        <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="text-left text-[11px] uppercase tracking-wider text-muted">
-              <th className="py-2 pr-3">Vehicle</th>
-              <th className="py-2 pr-3 text-right">Lease + cash</th>
-              <th className="py-2 pr-3 text-right">Energy</th>
-              <th className="py-2 pr-3 text-right">Ins.</th>
-              <th className="py-2 pr-3 text-right">Maint.</th>
-              <th className="py-2 pr-3 text-right">Overage</th>
-              <th className="py-2 pr-3 text-right">Monthly</th>
-              <th className="py-2 text-right">3-yr total</th>
+              <SortableTh
+                label="Vehicle"
+                sortKey="name"
+                activeKey={sortKey}
+                dir={sortDir}
+                onClick={onHeaderClick}
+                align="left"
+                sticky
+              />
+              {COLUMNS.map((c) => (
+                <SortableTh
+                  key={c.key}
+                  label={c.label}
+                  sortKey={c.key}
+                  activeKey={sortKey}
+                  dir={sortDir}
+                  onClick={onHeaderClick}
+                  align="right"
+                />
+              ))}
             </tr>
           </thead>
           <tbody>
-            {vehicles.map((v, i) => {
-              const r = results[i];
-              return (
-                <tr key={v.id} className="border-t border-line">
-                  <td className="py-2 pr-3">
-                    <span
-                      className="mr-2 inline-block h-2 w-2 rounded-full align-middle"
-                      style={{ background: v.color }}
-                    />
-                    {v.shortName}
-                  </td>
-                  <td className="py-2 pr-3 text-right font-mono">
-                    {fmtMoney(
-                      r.monthly.lease +
-                        r.monthly.amortizedDown +
-                        r.monthly.opportunityCost,
-                    )}
-                  </td>
-                  <td className="py-2 pr-3 text-right font-mono">
-                    {fmtMoney(r.monthly.fuel)}
-                  </td>
-                  <td className="py-2 pr-3 text-right font-mono">
-                    {fmtMoney(r.monthly.insurance)}
-                  </td>
-                  <td className="py-2 pr-3 text-right font-mono">
-                    {fmtMoney(r.monthly.maintenance)}
-                  </td>
+            {sortedRows.map((row) => (
+              <tr key={row.v.id} className="border-t border-line">
+                <td className="sticky left-0 z-[1] bg-panel py-2 pr-3">
+                  <span
+                    className="mr-2 inline-block h-2 w-2 rounded-full align-middle"
+                    style={{ background: row.v.color }}
+                  />
+                  {row.v.shortName}
+                </td>
+                {COLUMNS.map((c) => (
                   <td
+                    key={c.key}
                     className={`py-2 pr-3 text-right font-mono ${
-                      r.monthly.overage > 0 ? "text-warn" : ""
-                    }`}
+                      c.key === "threeYear"
+                        ? "font-semibold"
+                        : c.key === "monthly"
+                          ? "font-semibold"
+                          : ""
+                    } ${c.cellClass?.(row) ?? ""}`}
                   >
-                    {fmtMoney(r.monthly.overage)}
+                    {c.format(row)}
                   </td>
-                  <td className="py-2 pr-3 text-right font-mono font-semibold">
-                    {fmtMoney(r.monthly.total)}
-                  </td>
-                  <td className="py-2 text-right font-mono">
-                    {fmtMoney(r.threeYearTotal)}
-                  </td>
-                </tr>
-              );
-            })}
+                ))}
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
     </section>
+  );
+}
+
+function SortableTh({
+  label,
+  sortKey,
+  activeKey,
+  dir,
+  onClick,
+  align,
+  sticky,
+}: {
+  label: string;
+  sortKey: SortKey;
+  activeKey: SortKey;
+  dir: SortDir;
+  onClick: (k: SortKey) => void;
+  align: "left" | "right";
+  sticky?: boolean;
+}) {
+  const active = activeKey === sortKey;
+  return (
+    <th
+      className={`py-2 pr-3 ${align === "right" ? "text-right" : "text-left"} ${
+        sticky ? "sticky left-0 z-[2] bg-panel" : ""
+      }`}
+    >
+      <button
+        type="button"
+        onClick={() => onClick(sortKey)}
+        aria-sort={
+          active ? (dir === "asc" ? "ascending" : "descending") : "none"
+        }
+        className={`inline-flex items-center gap-1 uppercase tracking-wider transition-colors ${
+          active ? "text-fg" : "text-muted hover:text-fg"
+        }`}
+      >
+        <span>{label}</span>
+        <SortIndicator active={active} dir={dir} />
+      </button>
+    </th>
+  );
+}
+
+function SortIndicator({ active, dir }: { active: boolean; dir: SortDir }) {
+  return (
+    <svg
+      viewBox="0 0 10 12"
+      width="8"
+      height="10"
+      aria-hidden="true"
+      className={`shrink-0 ${active ? "opacity-100" : "opacity-30"}`}
+    >
+      <path
+        d="M5 1 L9 5 L1 5 Z"
+        fill="currentColor"
+        opacity={active && dir === "asc" ? 1 : 0.35}
+      />
+      <path
+        d="M5 11 L1 7 L9 7 Z"
+        fill="currentColor"
+        opacity={active && dir === "desc" ? 1 : 0.35}
+      />
+    </svg>
+  );
+}
+
+function MobileSortBar({
+  activeKey,
+  dir,
+  onChange,
+}: {
+  activeKey: SortKey;
+  dir: SortDir;
+  onChange: (k: SortKey) => void;
+}) {
+  // Phone-friendly sort picker. The whole table doesn't fit, so we
+  // expose the sort separately as a horizontal scroller of chips. Each
+  // chip toggles asc/desc on its column. Default cheapest-first stays
+  // selected for "3-yr total" which is the most useful sort here.
+  const chips: { key: SortKey; label: string }[] = [
+    { key: "threeYear", label: "3-yr total" },
+    { key: "monthly", label: "Monthly" },
+    { key: "leaseCash", label: "Lease+cash" },
+    { key: "energy", label: "Energy" },
+    { key: "insurance", label: "Ins." },
+    { key: "maintenance", label: "Maint." },
+    { key: "overage", label: "Overage" },
+    { key: "name", label: "Name" },
+  ];
+  return (
+    <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {chips.map((c) => {
+        const active = c.key === activeKey;
+        return (
+          <button
+            key={c.key}
+            type="button"
+            onClick={() => onChange(c.key)}
+            className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] transition-colors ${
+              active
+                ? "border-fg/60 bg-fg/[0.04] font-semibold text-fg"
+                : "border-line bg-panel2 text-muted hover:text-fg"
+            }`}
+          >
+            <span>{c.label}</span>
+            <SortIndicator active={active} dir={dir} />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function MobileVehicleRow({ row }: { row: ComparisonRow }) {
+  const { v, r } = row;
+  return (
+    <div className="rounded-xl border border-line bg-panel2/40 p-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            className="inline-block h-2 w-2 shrink-0 rounded-full"
+            style={{ background: v.color }}
+          />
+          <span className="truncate text-[13px] font-medium">
+            {v.shortName}
+          </span>
+        </div>
+        <div className="flex shrink-0 flex-col items-end leading-tight">
+          <span className="font-mono text-[15px] font-semibold">
+            {fmtMoney(r.threeYearTotal)}
+          </span>
+          <span className="text-[10px] uppercase tracking-wider text-muted">
+            3-yr total
+          </span>
+        </div>
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[12px]">
+        <MobileStat label="Monthly" value={fmtMoney(r.monthly.total)} bold />
+        <MobileStat
+          label="Lease+cash"
+          value={fmtMoney(
+            r.monthly.lease +
+              r.monthly.amortizedDown +
+              r.monthly.opportunityCost,
+          )}
+        />
+        <MobileStat label="Energy" value={fmtMoney(r.monthly.fuel)} />
+        <MobileStat label="Ins." value={fmtMoney(r.monthly.insurance)} />
+        <MobileStat label="Maint." value={fmtMoney(r.monthly.maintenance)} />
+        <MobileStat
+          label="Overage"
+          value={fmtMoney(r.monthly.overage)}
+          warn={r.monthly.overage > 0}
+        />
+      </div>
+    </div>
+  );
+}
+
+function MobileStat({
+  label,
+  value,
+  bold,
+  warn,
+}: {
+  label: string;
+  value: string;
+  bold?: boolean;
+  warn?: boolean;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <span className="text-muted">{label}</span>
+      <span
+        className={`font-mono ${bold ? "font-semibold" : ""} ${
+          warn ? "text-warn" : ""
+        }`}
+      >
+        {value}
+      </span>
+    </div>
   );
 }

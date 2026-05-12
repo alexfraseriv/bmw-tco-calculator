@@ -85,12 +85,16 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     fuelType: "premium",
     // Two sell-paths the user can choose between:
     //   - Trade-in (dealer): $10,432 immediate offer (per worksheet).
-    //   - Private party (KBB low-mile): ~$13–16k after some legwork.
-    // Defaulting to the conservative trade-in figure so the calculator's
-    // "buy-and-sell" event uses the number the user has in hand. Bump
-    // `expectedResaleValue` toward $14k if modeling a private-party sale.
+    //   - Private party (KBB / Cars.com 2026): $13,500–$14,500 realistic
+    //     sale price after some legwork. Low-mile premium over the KBB
+    //     typical-mileage baseline (~$11k for a 100k-mi 2017 X1) puts a
+    //     37k-mi example near the upper KBB range; nationwide dealer
+    //     listings for similar 2017 X1 xDrive28i average ~$13,700.
+    // Defaulting to **private-party midpoint $14,000** since holding to
+    // month 13 (loan payoff) and selling private is the upside path.
+    // Override to 10432 if modeling the trade-in instead.
     buyoutAmount: 0,
-    expectedResaleValue: 10432,
+    expectedResaleValue: 14000,
   },
   {
     id: "kiaev6",

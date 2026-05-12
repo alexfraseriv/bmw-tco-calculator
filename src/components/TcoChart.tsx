@@ -56,9 +56,9 @@ export function TcoChart({ vehicles, results }: Props) {
   };
 
   return (
-    <div className="h-[340px] w-full sm:h-[420px]">
+    <div className="h-[240px] w-full sm:h-[360px]">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={rows} margin={{ top: 16, right: 48, left: 12, bottom: 22 }}>
+        <LineChart data={rows} margin={{ top: 10, right: 48, left: 4, bottom: 18 }}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis
             dataKey="month"

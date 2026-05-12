@@ -48,19 +48,23 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     fuelType: "electric",
   },
   {
-    id: "polestar3",
-    name: "Polestar 3 Long Range",
-    shortName: "Polestar 3",
+    id: "kiaev6",
+    name: "Kia EV6 Wind AWD",
+    shortName: "Kia EV6",
     color: "#f59e0b",
-    msrp: 73000,
-    // May 2026 Polestar promo: $579/mo for 27 mo with $5,000 down. Stretched
-    // to a 36-mo equivalent and scaled for 12k mi (the promo is 7.5k mi/yr).
-    monthlyLease: 699,
-    downPayment: 5000,
-    efficiency: 80,
+    msrp: 53000,
+    // 2026 Kia EV6 leases run $381 avg (12k mi / 36 mo, $2,000 down) per
+    // TrueCar; AWD trims like Wind/GT-Line come in slightly higher.
+    // Defaulting to a realistic mid-trim quote.
+    monthlyLease: 450,
+    downPayment: 3000,
+    // EPA MPGe — 2025/2026 EV6 Wind AWD is ~105 combined; the base RWD
+    // Long Range hits 117. Using AWD as default (premium-feel matched to
+    // IONIQ 6 Limited which is AWD-class).
+    efficiency: 105,
     isGas: false,
-    monthlyInsurance: 250,
-    annualMaintenance: 150,
+    monthlyInsurance: 200,
+    annualMaintenance: 120,
     fuelType: "electric",
   },
 ];

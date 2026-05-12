@@ -17,12 +17,12 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     shortName: "BMW 430i",
     color: "#3b82f6",
     msrp: 57290,
-    // 36-mo / 12k-mi BMW USA Coupe lease at $599/mo with cap cost reduction
-    // of ~$3,000–$4,500 due at signing. User's $550/mo quote is on the
-    // aggressive end — keep it as a starter, but down payment shifts the
-    // effective monthly higher.
-    monthlyLease: 599,
-    downPayment: 3500,
+    // BMW USA 36-mo / 12k-mi Coupe lease. User-quoted $550/mo headline only
+    // pencils with more cash up front than the $599 sign-and-drive variant:
+    // ~$5,500 due at signing buys down the payment by ~$50/mo over the term.
+    monthlyLease: 550,
+    downPayment: 5500,
+    apr: 7,
     efficiency: 28,
     isGas: true,
     monthlyInsurance: 225,
@@ -40,7 +40,8 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     // (2024/2025 IONIQ 6 leases in the $300–$425 range used EV credit
     // pass-through that has now expired.)
     monthlyLease: 625,
-    downPayment: 3000,
+    downPayment: 4500,
+    apr: 7,
     efficiency: 117,
     isGas: false,
     monthlyInsurance: 175,
@@ -57,7 +58,8 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     // TrueCar; AWD trims like Wind/GT-Line come in slightly higher.
     // Defaulting to a realistic mid-trim quote.
     monthlyLease: 450,
-    downPayment: 3000,
+    downPayment: 4500,
+    apr: 7,
     // EPA MPGe — 2025/2026 EV6 Wind AWD is ~105 combined; the base RWD
     // Long Range hits 117. Using AWD as default (premium-feel matched to
     // IONIQ 6 Limited which is AWD-class).

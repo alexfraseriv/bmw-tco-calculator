@@ -44,13 +44,31 @@ export function monthlyBreakdown(
   s: EnergyScenario,
 ): MonthlyBreakdown {
   const lease = v.monthlyLease;
-  const amortizedDown = (v.downPayment || 0) / LEASE_TERM_MONTHS;
+  const down = v.downPayment || 0;
+  const amortizedDown = down / LEASE_TERM_MONTHS;
+  // Opportunity cost on cash tied up at signing. Linear amortization →
+  // average outstanding balance is down/2, so total interest = down * apr * years / 2.
+  // Spread back over the term so it composes with the other monthly figures.
+  const apr = (v.apr || 0) / 100;
+  const years = LEASE_TERM_MONTHS / 12;
+  const opportunityCost =
+    down > 0 && apr > 0 ? (down * apr * years) / 2 / LEASE_TERM_MONTHS : 0;
   const fuel = monthlyFuelCost(v, p, s);
   const insurance = v.monthlyInsurance;
   const maintenance = v.annualMaintenance / 12;
   const overage = monthlyOverageCost(p);
-  const total = lease + amortizedDown + fuel + insurance + maintenance + overage;
-  return { lease, amortizedDown, fuel, insurance, maintenance, overage, total };
+  const total =
+    lease + amortizedDown + opportunityCost + fuel + insurance + maintenance + overage;
+  return {
+    lease,
+    amortizedDown,
+    opportunityCost,
+    fuel,
+    insurance,
+    maintenance,
+    overage,
+    total,
+  };
 }
 
 export function computeVehicleResult(

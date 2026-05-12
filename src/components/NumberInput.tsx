@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 interface Props {
   label: string;
@@ -26,12 +26,15 @@ export function NumberInput({
   decimals,
 }: Props) {
   // Keep a local string so the user can type freely (e.g. clear the field)
-  // without us snapping back to 0 mid-edit.
+  // without us snapping back to 0 mid-edit. Resync with the prop only when
+  // an external change actually replaces the numeric value — using the
+  // "derived state with previous prop tracking" pattern instead of useEffect.
   const [text, setText] = useState<string>(String(value ?? ""));
-
-  useEffect(() => {
+  const [lastValue, setLastValue] = useState<number>(value);
+  if (value !== lastValue) {
+    setLastValue(value);
     setText(String(value ?? ""));
-  }, [value]);
+  }
 
   return (
     <label className="block">

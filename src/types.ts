@@ -15,6 +15,10 @@ export interface Vehicle {
   // monthly cost" reflects the true out-of-pocket spend regardless of how
   // it's split between sign-and-drive vs upfront cash.
   downPayment: number;
+  // Annual percentage rate used to value the cash tied up at signing. Typical
+  // manufacturer money factors of 0.0028–0.0035 translate to ~6.7–8.4% APR;
+  // 7% is a reasonable mid-point default.
+  apr: number;
   efficiency: number; // MPG (gas) or MPGe (EV)
   isGas: boolean;
   monthlyInsurance: number;
@@ -45,6 +49,11 @@ export interface MonthlyBreakdown {
   // monthly cost" so a $3,000 cap reduction reads as ~$83/mo and isn't
   // hidden by the headline sticker payment.
   amortizedDown: number;
+  // Time-value-of-money cost on cash tied up at signing. Treated as the APR
+  // applied to the AVERAGE outstanding balance (linear pay-down over the
+  // term), expressed as a monthly figure so it folds into the per-month
+  // total alongside the other components.
+  opportunityCost: number;
   fuel: number;
   insurance: number;
   maintenance: number;

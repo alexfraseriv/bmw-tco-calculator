@@ -26,6 +26,7 @@ function makeBlankVehicle(existingIds: string[]): Vehicle {
     msrp: 50000,
     monthlyLease: 500,
     downPayment: 0,
+    apr: 7,
     efficiency: 100,
     isGas: false,
     monthlyInsurance: 200,
@@ -358,7 +359,7 @@ function ComparisonTable({
           <thead>
             <tr className="text-left text-[11px] uppercase tracking-wider text-muted">
               <th className="py-2 pr-3">Vehicle</th>
-              <th className="py-2 pr-3 text-right">Lease</th>
+              <th className="py-2 pr-3 text-right">Lease + cash</th>
               <th className="py-2 pr-3 text-right">Energy</th>
               <th className="py-2 pr-3 text-right">Ins.</th>
               <th className="py-2 pr-3 text-right">Maint.</th>
@@ -380,7 +381,11 @@ function ComparisonTable({
                     {v.shortName}
                   </td>
                   <td className="py-2 pr-3 text-right font-mono">
-                    {fmtMoney(r.monthly.lease)}
+                    {fmtMoney(
+                      r.monthly.lease +
+                        r.monthly.amortizedDown +
+                        r.monthly.opportunityCost,
+                    )}
                   </td>
                   <td className="py-2 pr-3 text-right font-mono">
                     {fmtMoney(r.monthly.fuel)}

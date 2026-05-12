@@ -10,11 +10,25 @@ export interface Vehicle {
   color: string; // hex
   msrp: number;
   monthlyLease: number;
+  // How many of the 36 comparison months still carry the lease/loan
+  // payment. New leases: 36 (full window). For a "keep current car"
+  // scenario, set this to the payments remaining on the existing
+  // contract (e.g. 14) and monthly payments stop after that point.
+  paymentMonthsRemaining?: number;
   // Cash due at signing that goes against the cap cost / drive-off. The
   // calculator amortizes this across the 36-month term so the "effective
   // monthly cost" reflects the true out-of-pocket spend regardless of how
   // it's split between sign-and-drive vs upfront cash.
   downPayment: number;
+  // Optional resale / payoff economics for a kept vehicle. At month
+  // `paymentMonthsRemaining` the user may sell the car privately. For a
+  // lease this means paying the residual buyout first; for a finance
+  // loan that's paid off by then, the buyout is $0 and the full sale
+  // price is upside. Net cash = expectedResaleValue − buyoutAmount,
+  // applied as a one-time event in the cumulative chart. Leave both 0
+  // (or expectedResaleValue 0) to skip the math entirely.
+  buyoutAmount?: number; // residual / payoff needed to free the car for sale
+  expectedResaleValue?: number; // private-party sale price at that moment
   // Annual percentage rate used to value the cash tied up at signing. Typical
   // manufacturer money factors of 0.0028–0.0035 translate to ~6.7–8.4% APR;
   // 7% is a reasonable mid-point default.
@@ -44,6 +58,11 @@ export interface EnergyScenario {
 }
 
 export interface MonthlyBreakdown {
+  // Average monthly lease/loan payment over the comparison window. For a
+  // new lease this is just `monthlyLease`. For a "keep current" vehicle
+  // with payments ending mid-window, it's the amount averaged across the
+  // full 36 months so the per-month figures stay comparable; the chart
+  // and 3-year total reflect the true step-down.
   lease: number;
   // Down payment amortized over the lease term — folded into "effective
   // monthly cost" so a $3,000 cap reduction reads as ~$83/mo and isn't
@@ -67,4 +86,9 @@ export interface VehicleResult {
   threeYearTotal: number;
   // cumulative cost at month 0..36 (37 entries)
   cumulative: number[];
+  // One-time net cash event at end-of-payments if a buyout + resale is
+  // configured. Positive = profit, negative = loss. Folded into
+  // `threeYearTotal` (subtracted as a cost reduction) and shown as a
+  // visible step in the cumulative chart.
+  buyAndSellNet: number;
 }

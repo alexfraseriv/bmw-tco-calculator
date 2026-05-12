@@ -49,6 +49,40 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     fuelType: "electric",
   },
   {
+    // "Keep the current car" scenario. The car is a 2017 BMW X1 with 37k
+    // miles, financed (not leased): $314/mo for 14 more months, then
+    // owned outright (~$4,300 remaining principal). After payoff, monthly
+    // car-payment cost drops to $0 for the rest of the 36-month window.
+    // Maintenance is the big swing factor: 2017 BMW X1 averages ~$1,740/yr
+    // in combined service + repair per RepairPal. Low mileage helps but
+    // doesn't override age-related rubber / seal / cooling-system wear.
+    // Default expectedResaleValue $14,000 reflects a KBB private-party
+    // estimate adjusted upward for low miles; set it to 0 to model
+    // keeping the car instead of selling at month 14.
+    id: "bmwx1current",
+    name: "BMW X1 (current — 2017, 37k mi)",
+    shortName: "Current X1",
+    color: "#a855f7",
+    msrp: 0, // already paid for in prior years
+    monthlyLease: 314,
+    paymentMonthsRemaining: 14,
+    downPayment: 0,
+    apr: 0,
+    // 2017 BMW X1 xDrive28i: EPA 25 MPG combined. Slightly worse than the
+    // new 430i because it's an older 4-cyl turbo.
+    efficiency: 25,
+    isGas: true,
+    monthlyInsurance: 150, // older car: comprehensive drops, liability rises
+    annualMaintenance: 1740, // RepairPal: maint $824 + repair $915 / yr
+    fuelType: "premium",
+    // Financed car: no lease residual to buy out — once payments end at
+    // month 14, the user owns it free. If they sell, the full sale price
+    // is cash in pocket. Default sale price = $14k (low-miles premium
+    // over the KBB baseline of ~$11k for typical-mileage 2017 X1).
+    buyoutAmount: 0,
+    expectedResaleValue: 14000,
+  },
+  {
     id: "kiaev6",
     name: "Kia EV6 Wind AWD",
     shortName: "Kia EV6",
@@ -72,9 +106,13 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
 ];
 
 export const DEFAULT_DRIVING: DrivingProfile = {
-  roundTripMiles: 352, // Portland <-> Bellevue
-  tripsPerMonth: 2,
-  otherMonthlyMiles: 800,
+  // Historical baseline from the user's friend: 2017 X1 at 37k miles over
+  // 9 years ≈ 4,100 mi/yr ≈ 350 mi/mo. Bellevue work trips are NOT in
+  // this default — the friend will start adding them when the new job
+  // requires it. Bump `tripsPerMonth` to 2 (or whatever) to model that.
+  roundTripMiles: 352, // Portland <-> Bellevue, kept ready for the user
+  tripsPerMonth: 0,
+  otherMonthlyMiles: 350,
   leaseAllowanceAnnual: 12000,
   overagePerMile: 0.25,
 };

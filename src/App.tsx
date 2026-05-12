@@ -6,6 +6,8 @@ import { ScenariosPanel } from "./components/ScenariosPanel";
 import { ShareBar } from "./components/ShareBar";
 import { TcoChart } from "./components/TcoChart";
 import { VehicleCard } from "./components/VehicleCard";
+import { NumberInput } from "./components/NumberInput";
+import { computeTakeHome } from "./taxes";
 import type { EnergyScenario, Vehicle } from "./types";
 import { useUrlState } from "./useUrlState";
 
@@ -23,6 +25,7 @@ function makeBlankVehicle(existingIds: string[]): Vehicle {
     color,
     msrp: 50000,
     monthlyLease: 500,
+    downPayment: 0,
     efficiency: 100,
     isGas: false,
     monthlyInsurance: 200,
@@ -33,7 +36,8 @@ function makeBlankVehicle(existingIds: string[]): Vehicle {
 
 export default function App() {
   const [state, setState] = useUrlState();
-  const { vehicles, driving, scenarios, scenarioKey } = state;
+  const { vehicles, driving, scenarios, scenarioKey, annualSalary } = state;
+  const takeHome = useMemo(() => computeTakeHome(annualSalary), [annualSalary]);
 
   const activeScenario: EnergyScenario =
     scenarios.find((s) => s.key === scenarioKey) ?? scenarios[1];
@@ -68,20 +72,30 @@ export default function App() {
       <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="text-[11px] uppercase tracking-widest text-muted">
-            Portland, OR · 3-year lease
+            Portland, OR · 3-year lease · May 2026 market data
           </div>
           <h1 className="mt-1 text-2xl font-semibold sm:text-3xl">
-            BMW 430i vs EV: total cost of ownership
+            Car cost comparison: lease, fuel, insurance &amp; total spend
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-muted">
-            All numbers below are editable and saved into the URL — share the
-            link and the recipient sees your exact scenario. Math follows EPA
-            MPGe (33.7 kWh / gal) and standard lease overage at $
-            {driving.overagePerMile.toFixed(2)} / mi.
+            Side-by-side 3-year cost of ownership for any cars you want to
+            compare. All numbers are editable and persist in the URL — share
+            the link and the recipient sees your exact scenario. Math follows
+            EPA MPGe (33.7 kWh / gal); down payments are amortized into the
+            effective monthly cost.
           </p>
         </div>
         <ShareBar />
       </header>
+
+      <div className="mb-4 rounded-lg border border-line bg-panel/60 p-3 text-sm text-muted">
+        <strong className="font-semibold text-fg">Work-travel reimbursement caveat:</strong>{" "}
+        work mileage gets reimbursed at the IRS rate (variable cost — fuel +
+        per-mile wear), but the <em>lease payment itself is fixed</em>{" "}
+        regardless of how you drive. Picking a more expensive lease costs the
+        extra premium × 36 in pure out-of-pocket spend that reimbursement
+        does not cover. Insurance and unreimbursed maintenance widen the gap.
+      </div>
 
       {overage && (
         <div className="mb-4 rounded-lg border border-warn/40 bg-warn/[0.06] p-3 text-sm text-warn">
@@ -103,6 +117,17 @@ export default function App() {
         <DrivingPanel
           driving={driving}
           onChange={(d) => setState({ ...state, driving: d })}
+        />
+
+        <SalaryPanel
+          annualSalary={annualSalary}
+          takeHome={takeHome}
+          onChange={(s) => setState({ ...state, annualSalary: s })}
+          vehiclesMonthly={results.map((r, i) => ({
+            name: vehicles[i]?.shortName ?? "",
+            color: vehicles[i]?.color ?? "#888",
+            monthly: r.monthly.total,
+          }))}
         />
 
         <ScenariosPanel
@@ -215,6 +240,99 @@ export default function App() {
         </footer>
       </div>
     </div>
+  );
+}
+
+function SalaryPanel({
+  annualSalary,
+  takeHome,
+  onChange,
+  vehiclesMonthly,
+}: {
+  annualSalary: number;
+  takeHome: ReturnType<typeof computeTakeHome>;
+  onChange: (n: number) => void;
+  vehiclesMonthly: Array<{ name: string; color: string; monthly: number }>;
+}) {
+  return (
+    <section className="rounded-xl border border-line bg-panel p-4">
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-base font-semibold">Salary &amp; take-home</h2>
+        <div className="text-[11px] text-muted">
+          Portland, OR · single filer · 2026 estimate
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-3">
+        <NumberInput
+          label="Annual salary"
+          prefix="$"
+          value={annualSalary}
+          onChange={onChange}
+          step={1000}
+          min={0}
+        />
+        <div className="rounded-md border border-line bg-panel2 p-3">
+          <div className="text-[11px] uppercase tracking-wider text-muted">
+            Monthly take-home
+          </div>
+          <div className="mt-1 font-mono text-lg font-semibold">
+            {fmtMoney(takeHome.monthlyTakeHome)}
+          </div>
+          <div className="mt-1 text-[11px] text-muted">
+            Federal + OR state + FICA · effective rate{" "}
+            {(takeHome.effectiveRate * 100).toFixed(1)}%
+          </div>
+        </div>
+        <div className="rounded-md border border-line bg-panel2 p-3">
+          <div className="text-[11px] uppercase tracking-wider text-muted">
+            Annual take-home
+          </div>
+          <div className="mt-1 font-mono text-lg font-semibold">
+            {fmtMoney(takeHome.annualTakeHome)}
+          </div>
+          <div className="mt-1 text-[11px] text-muted">
+            Tax: {fmtMoney(takeHome.totalTax)} (fed {fmtMoney(takeHome.federalTax)}{" "}
+            · OR {fmtMoney(takeHome.oregonTax)} · FICA{" "}
+            {fmtMoney(takeHome.ficaSS + takeHome.ficaMedicare)})
+          </div>
+        </div>
+      </div>
+      <div className="mt-4">
+        <div className="mb-1 text-[11px] uppercase tracking-wider text-muted">
+          Monthly vehicle cost vs take-home
+        </div>
+        <div className="space-y-1.5">
+          {vehiclesMonthly.map((v) => {
+            const pct =
+              takeHome.monthlyTakeHome > 0
+                ? (v.monthly / takeHome.monthlyTakeHome) * 100
+                : 0;
+            return (
+              <div key={v.name} className="flex items-center gap-2 text-sm">
+                <span
+                  className="inline-block h-2 w-2 rounded-full"
+                  style={{ background: v.color }}
+                />
+                <span className="w-32 shrink-0 truncate">{v.name}</span>
+                <div className="relative h-2 flex-1 overflow-hidden rounded bg-panel2">
+                  <div
+                    className="absolute inset-y-0 left-0 rounded"
+                    style={{
+                      width: `${Math.min(100, pct)}%`,
+                      background: v.color,
+                      opacity: 0.7,
+                    }}
+                  />
+                </div>
+                <span className="w-24 shrink-0 text-right font-mono text-[12px]">
+                  {fmtMoney(v.monthly)} · {pct.toFixed(1)}%
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
   );
 }
 

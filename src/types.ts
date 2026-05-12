@@ -10,6 +10,11 @@ export interface Vehicle {
   color: string; // hex
   msrp: number;
   monthlyLease: number;
+  // Cash due at signing that goes against the cap cost / drive-off. The
+  // calculator amortizes this across the 36-month term so the "effective
+  // monthly cost" reflects the true out-of-pocket spend regardless of how
+  // it's split between sign-and-drive vs upfront cash.
+  downPayment: number;
   efficiency: number; // MPG (gas) or MPGe (EV)
   isGas: boolean;
   monthlyInsurance: number;
@@ -36,6 +41,10 @@ export interface EnergyScenario {
 
 export interface MonthlyBreakdown {
   lease: number;
+  // Down payment amortized over the lease term — folded into "effective
+  // monthly cost" so a $3,000 cap reduction reads as ~$83/mo and isn't
+  // hidden by the headline sticker payment.
+  amortizedDown: number;
   fuel: number;
   insurance: number;
   maintenance: number;

@@ -17,7 +17,10 @@ export interface AppState {
   driving: DrivingProfile;
   scenarios: EnergyScenario[];
   scenarioKey: ScenarioKey;
+  annualSalary: number;
 }
+
+const DEFAULT_SALARY = 185_000;
 
 export function defaultState(): AppState {
   return {
@@ -26,6 +29,7 @@ export function defaultState(): AppState {
     driving: { ...DEFAULT_DRIVING },
     scenarios: DEFAULT_SCENARIOS.map((s) => ({ ...s })),
     scenarioKey: "average",
+    annualSalary: DEFAULT_SALARY,
   };
 }
 
@@ -45,6 +49,7 @@ const VKEYS: Record<keyof Vehicle, string> = {
   color: "c",
   msrp: "p",
   monthlyLease: "l",
+  downPayment: "d",
   efficiency: "e",
   isGas: "g",
   monthlyInsurance: "i",
@@ -101,6 +106,7 @@ function decodeVehicle(s: string): Vehicle | null {
     color: get("color", "c") ?? "#94a3b8",
     msrp: Number(get("msrp", "p")) || 0,
     monthlyLease: Number(get("monthlyLease", "l")) || 0,
+    downPayment: Number(get("downPayment", "d")) || 0,
     efficiency: Number(get("efficiency", "e")) || 0,
     isGas: get("isGas", "g") as boolean,
     monthlyInsurance: Number(get("monthlyInsurance", "i")) || 0,
@@ -177,6 +183,8 @@ export function encodeState(state: AppState): string {
   const sc = encodeScenarios(state.scenarios);
   if (sc.replace(/\|/g, "") !== "") sp.set("s", sc);
   if (state.scenarioKey !== "average") sp.set("k", state.scenarioKey);
+  if (state.annualSalary !== DEFAULT_SALARY)
+    sp.set("y", String(Math.round(state.annualSalary)));
   return sp.toString();
 }
 
@@ -202,6 +210,12 @@ export function decodeState(query: string): AppState {
   const kRaw = sp.get("k");
   if (kRaw === "low" || kRaw === "average" || kRaw === "high") {
     base.scenarioKey = kRaw;
+  }
+
+  const yRaw = sp.get("y");
+  if (yRaw) {
+    const y = Number(yRaw);
+    if (Number.isFinite(y) && y > 0) base.annualSalary = y;
   }
 
   return base;

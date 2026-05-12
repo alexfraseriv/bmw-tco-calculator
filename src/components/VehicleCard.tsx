@@ -70,6 +70,13 @@ export function VehicleCard({
           prefix="$"
         />
         <NumberInput
+          label="Cash at signing"
+          value={vehicle.downPayment ?? 0}
+          onChange={(n) => onChange({ ...vehicle, downPayment: n })}
+          prefix="$"
+          step={500}
+        />
+        <NumberInput
           label={efficiencyLabel}
           value={vehicle.efficiency}
           onChange={(n) => onChange({ ...vehicle, efficiency: n })}
@@ -89,7 +96,13 @@ export function VehicleCard({
       </div>
 
       <dl className="mt-4 space-y-1 text-[13px]">
-        <Row label="Lease" v={result.monthly.lease} />
+        <Row label="Lease (sticker)" v={result.monthly.lease} />
+        {result.monthly.amortizedDown > 0 && (
+          <Row
+            label="Down ÷ 36 mo"
+            v={result.monthly.amortizedDown}
+          />
+        )}
         <Row label={vehicle.isGas ? "Fuel" : "Electricity"} v={result.monthly.fuel} />
         <Row label="Insurance" v={result.monthly.insurance} />
         <Row label="Maintenance" v={result.monthly.maintenance} />

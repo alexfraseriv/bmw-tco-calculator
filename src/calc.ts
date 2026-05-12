@@ -44,12 +44,13 @@ export function monthlyBreakdown(
   s: EnergyScenario,
 ): MonthlyBreakdown {
   const lease = v.monthlyLease;
+  const amortizedDown = (v.downPayment || 0) / LEASE_TERM_MONTHS;
   const fuel = monthlyFuelCost(v, p, s);
   const insurance = v.monthlyInsurance;
   const maintenance = v.annualMaintenance / 12;
   const overage = monthlyOverageCost(p);
-  const total = lease + fuel + insurance + maintenance + overage;
-  return { lease, fuel, insurance, maintenance, overage, total };
+  const total = lease + amortizedDown + fuel + insurance + maintenance + overage;
+  return { lease, amortizedDown, fuel, insurance, maintenance, overage, total };
 }
 
 export function computeVehicleResult(

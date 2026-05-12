@@ -67,7 +67,7 @@ export function TcoChart({ vehicles, results }: Props) {
               value: "Months from start of lease",
               position: "insideBottom",
               offset: -10,
-              fill: "#94a3b8",
+              fill: "#64748b",
               fontSize: 11,
             }}
           />
@@ -81,19 +81,21 @@ export function TcoChart({ vehicles, results }: Props) {
               angle: -90,
               position: "insideLeft",
               offset: 16,
-              fill: "#94a3b8",
+              fill: "#64748b",
               fontSize: 11,
               style: { textAnchor: "middle" },
             }}
           />
           <Tooltip
             contentStyle={{
-              background: "#121826",
-              border: "1px solid #1f2937",
+              background: "#ffffff",
+              border: "1px solid #e2e8f0",
               borderRadius: 8,
               fontSize: 12,
+              boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.08)",
+              color: "#0f172a",
             }}
-            labelStyle={{ color: "#94a3b8" }}
+            labelStyle={{ color: "#64748b" }}
             formatter={(value) =>
               typeof value === "number" ? fmtMoney(value) : String(value)
             }

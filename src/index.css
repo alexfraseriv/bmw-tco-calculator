@@ -6,8 +6,8 @@ html,
 body,
 #root {
   height: 100%;
-  background: #0b0f17;
-  color: #e5e7eb;
+  background: #f8fafc;
+  color: #0f172a;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
@@ -28,12 +28,12 @@ input[type="number"] {
 
 .recharts-cartesian-grid-horizontal line,
 .recharts-cartesian-grid-vertical line {
-  stroke: #1f2937;
+  stroke: #e2e8f0;
 }
 .recharts-text {
-  fill: #94a3b8;
+  fill: #64748b;
   font-size: 11px;
 }
 .recharts-legend-item-text {
-  color: #e5e7eb !important;
+  color: #0f172a !important;
 }

@@ -9,13 +9,24 @@ import {
   monthlyOverageCost,
 } from "../calc";
 import {
-  DEFAULT_DRIVING,
   DEFAULT_SCENARIOS,
   DEFAULT_VEHICLES,
   LEASE_TERM_MONTHS,
 } from "../defaults";
 import type { DrivingProfile, EnergyScenario, Vehicle } from "../types";
 import { computeTakeHome } from "../taxes";
+
+// BRIEF §9 driving profile. We pin this explicitly rather than reading
+// `DEFAULT_DRIVING` because the UI default tracks the user's friend's
+// actual usage (350 mi/mo baseline), but the math sanity table is
+// anchored on the original 1,504 mi/mo / 18,048 mi/yr inputs.
+const briefDriving: DrivingProfile = {
+  roundTripMiles: 352,
+  tripsPerMonth: 2,
+  otherMonthlyMiles: 800,
+  leaseAllowanceAnnual: 12000,
+  overagePerMile: 0.25,
+};
 
 const averageScenario = (): EnergyScenario => {
   const s = DEFAULT_SCENARIOS.find((x) => x.key === "average");
@@ -61,13 +72,13 @@ const briefIoniq: Vehicle = {
 
 describe("driving math", () => {
   it("monthlyMiles = roundTrip × trips + other", () => {
-    expect(monthlyMiles(DEFAULT_DRIVING)).toBe(352 * 2 + 800);
-    expect(monthlyMiles(DEFAULT_DRIVING)).toBe(1504);
+    expect(monthlyMiles(briefDriving)).toBe(352 * 2 + 800);
+    expect(monthlyMiles(briefDriving)).toBe(1504);
   });
 
   it("annualMiles = monthlyMiles × 12", () => {
-    expect(annualMiles(DEFAULT_DRIVING)).toBe(1504 * 12);
-    expect(annualMiles(DEFAULT_DRIVING)).toBe(18048);
+    expect(annualMiles(briefDriving)).toBe(1504 * 12);
+    expect(annualMiles(briefDriving)).toBe(18048);
   });
 });
 
@@ -86,7 +97,7 @@ describe("mileage overage", () => {
 
   it("zero overage when under allowance", () => {
     const p: DrivingProfile = {
-      ...DEFAULT_DRIVING,
+      ...briefDriving,
       roundTripMiles: 0,
       tripsPerMonth: 0,
       otherMonthlyMiles: 800, // 9,600/yr
@@ -96,7 +107,7 @@ describe("mileage overage", () => {
 
   it("default driving (18,048/yr) yields ~$126/mo overage, and an 18k/yr round case yields exactly $125/mo", () => {
     // Default profile is 18,048 mi/yr → 6,048 overage × $0.25 ÷ 12 = $126.00
-    expect(monthlyOverageCost(DEFAULT_DRIVING)).toBeCloseTo(126.0, 2);
+    expect(monthlyOverageCost(briefDriving)).toBeCloseTo(126.0, 2);
 
     // BRIEF/task hint case: exactly 18,000 mi/yr default driving = $125/mo
     const p18k: DrivingProfile = {
@@ -155,7 +166,7 @@ describe("MPGe conversion (fuel cost)", () => {
 
   it("zero monthly miles → zero fuel cost", () => {
     const p: DrivingProfile = {
-      ...DEFAULT_DRIVING,
+      ...briefDriving,
       roundTripMiles: 0,
       tripsPerMonth: 0,
       otherMonthlyMiles: 0,
@@ -170,13 +181,13 @@ describe("BRIEF §9 sanity-table reproduction (defaults + average prices)", () =
   // payment. With those exact inputs, the calculator must produce the
   // table's 3-year totals within ±$50.
   it("BMW 430i → $43,300 / 3yr (±$50)", () => {
-    const r = computeVehicleResult(briefBmw, DEFAULT_DRIVING, averageScenario());
+    const r = computeVehicleResult(briefBmw, briefDriving, averageScenario());
     expect(r.threeYearTotal).toBeGreaterThan(43_300 - 50);
     expect(r.threeYearTotal).toBeLessThan(43_300 + 50);
   });
 
   it("IONIQ 6 → $28,900 / 3yr (±$50)", () => {
-    const r = computeVehicleResult(briefIoniq, DEFAULT_DRIVING, averageScenario());
+    const r = computeVehicleResult(briefIoniq, briefDriving, averageScenario());
     expect(r.threeYearTotal).toBeGreaterThan(28_900 - 50);
     expect(r.threeYearTotal).toBeLessThan(28_900 + 50);
   });
@@ -190,14 +201,14 @@ describe("BRIEF §9 sanity-table reproduction (defaults + average prices)", () =
     if (!kia) return;
 
     const s = averageScenario();
-    const m = monthlyBreakdown(kia, DEFAULT_DRIVING, s);
+    const m = monthlyBreakdown(kia, briefDriving, s);
 
     expect(m.lease).toBeCloseTo(kia.monthlyLease, 6);
     expect(m.amortizedDown).toBeCloseTo(kia.downPayment / LEASE_TERM_MONTHS, 6);
-    expect(m.fuel).toBeCloseTo(monthlyFuelCost(kia, DEFAULT_DRIVING, s), 6);
+    expect(m.fuel).toBeCloseTo(monthlyFuelCost(kia, briefDriving, s), 6);
     expect(m.insurance).toBeCloseTo(kia.monthlyInsurance, 6);
     expect(m.maintenance).toBeCloseTo(kia.annualMaintenance / 12, 6);
-    expect(m.overage).toBeCloseTo(monthlyOverageCost(DEFAULT_DRIVING), 6);
+    expect(m.overage).toBeCloseTo(monthlyOverageCost(briefDriving), 6);
 
     const expectedTotal =
       m.lease +
@@ -219,33 +230,33 @@ describe("BRIEF §9 sanity-table reproduction (defaults + average prices)", () =
 });
 
 function r3(v: Vehicle): number {
-  return computeVehicleResult(v, DEFAULT_DRIVING, averageScenario()).threeYearTotal;
+  return computeVehicleResult(v, briefDriving, averageScenario()).threeYearTotal;
 }
 
 describe("down payment amortization", () => {
   it("$5,400 over 36mo with no APR → $150/mo", () => {
     const v: Vehicle = { ...briefBmw, downPayment: 5400 };
-    const m = monthlyBreakdown(v, DEFAULT_DRIVING, averageScenario());
+    const m = monthlyBreakdown(v, briefDriving, averageScenario());
     expect(m.amortizedDown).toBeCloseTo(150.0, 6);
   });
 
   it("$3,000 over 36mo → $83.33/mo", () => {
     const v: Vehicle = { ...briefIoniq, downPayment: 3000 };
-    const m = monthlyBreakdown(v, DEFAULT_DRIVING, averageScenario());
+    const m = monthlyBreakdown(v, briefDriving, averageScenario());
     expect(m.amortizedDown).toBeCloseTo(3000 / 36, 6);
     expect(m.amortizedDown).toBeCloseTo(83.3333, 3);
   });
 
   it("zero down → zero amortizedDown", () => {
-    const m = monthlyBreakdown(briefBmw, DEFAULT_DRIVING, averageScenario());
+    const m = monthlyBreakdown(briefBmw, briefDriving, averageScenario());
     expect(m.amortizedDown).toBe(0);
   });
 
   it("amortizedDown contributes to total", () => {
-    const noDown = monthlyBreakdown(briefBmw, DEFAULT_DRIVING, averageScenario());
+    const noDown = monthlyBreakdown(briefBmw, briefDriving, averageScenario());
     const withDown = monthlyBreakdown(
       { ...briefBmw, downPayment: 3600 },
-      DEFAULT_DRIVING,
+      briefDriving,
       averageScenario(),
     );
     expect(withDown.total - noDown.total).toBeCloseTo(100, 4);
@@ -257,8 +268,8 @@ describe("scenario switching", () => {
     const low = DEFAULT_SCENARIOS.find((s) => s.key === "low")!;
     const high = DEFAULT_SCENARIOS.find((s) => s.key === "high")!;
 
-    const mLow = monthlyBreakdown(briefBmw, DEFAULT_DRIVING, low);
-    const mHigh = monthlyBreakdown(briefBmw, DEFAULT_DRIVING, high);
+    const mLow = monthlyBreakdown(briefBmw, briefDriving, low);
+    const mHigh = monthlyBreakdown(briefBmw, briefDriving, high);
 
     expect(mLow.lease).toBe(mHigh.lease);
     expect(mLow.amortizedDown).toBe(mHigh.amortizedDown);
@@ -273,8 +284,8 @@ describe("scenario switching", () => {
     const low = DEFAULT_SCENARIOS.find((s) => s.key === "low")!;
     const high = DEFAULT_SCENARIOS.find((s) => s.key === "high")!;
 
-    const mLow = monthlyBreakdown(briefIoniq, DEFAULT_DRIVING, low);
-    const mHigh = monthlyBreakdown(briefIoniq, DEFAULT_DRIVING, high);
+    const mLow = monthlyBreakdown(briefIoniq, briefDriving, low);
+    const mHigh = monthlyBreakdown(briefIoniq, briefDriving, high);
 
     expect(mLow.lease).toBe(mHigh.lease);
     expect(mLow.insurance).toBe(mHigh.insurance);
@@ -286,14 +297,14 @@ describe("scenario switching", () => {
 
 describe("cumulative & threeYearTotal", () => {
   it("cumulative has 37 entries (months 0..36); month 0 is zero; month 36 equals threeYearTotal", () => {
-    const r = computeVehicleResult(briefBmw, DEFAULT_DRIVING, averageScenario());
+    const r = computeVehicleResult(briefBmw, briefDriving, averageScenario());
     expect(r.cumulative.length).toBe(LEASE_TERM_MONTHS + 1);
     expect(r.cumulative[0]).toBe(0);
     expect(r.cumulative[36]).toBeCloseTo(r.threeYearTotal, 6);
   });
 
   it("cumulative is strictly increasing for nonzero monthly cost", () => {
-    const r = computeVehicleResult(briefBmw, DEFAULT_DRIVING, averageScenario());
+    const r = computeVehicleResult(briefBmw, briefDriving, averageScenario());
     for (let i = 1; i < r.cumulative.length; i++) {
       expect(r.cumulative[i]).toBeGreaterThan(r.cumulative[i - 1]);
     }

@@ -77,6 +77,14 @@ export function VehicleCard({
           step={500}
         />
         <NumberInput
+          label="APR (opp. cost)"
+          value={vehicle.apr ?? 0}
+          onChange={(n) => onChange({ ...vehicle, apr: Math.max(0, Math.min(20, n)) })}
+          suffix="%"
+          step={0.25}
+          min={0}
+        />
+        <NumberInput
           label={efficiencyLabel}
           value={vehicle.efficiency}
           onChange={(n) => onChange({ ...vehicle, efficiency: n })}
@@ -101,6 +109,12 @@ export function VehicleCard({
           <Row
             label="Down ÷ 36 mo"
             v={result.monthly.amortizedDown}
+          />
+        )}
+        {result.monthly.opportunityCost > 0 && (
+          <Row
+            label="Opp. cost on cash"
+            v={result.monthly.opportunityCost}
           />
         )}
         <Row label={vehicle.isGas ? "Fuel" : "Electricity"} v={result.monthly.fuel} />

@@ -1,5 +1,11 @@
-import { useMemo } from "react";
-import { computeVehicleResult, fmtInt, fmtMoney, monthlyMiles, annualMiles } from "./calc";
+import { useMemo, useRef } from "react";
+import {
+  computeVehicleResult,
+  fmtInt,
+  fmtMoney,
+  monthlyMiles,
+  annualMiles,
+} from "./calc";
 import { DEFAULT_VEHICLES } from "./defaults";
 import { DrivingPanel } from "./components/DrivingPanel";
 import { ScenariosPanel } from "./components/ScenariosPanel";
@@ -51,70 +57,211 @@ export default function App() {
   // Baseline = the first 430i present, or the first vehicle.
   const baseline =
     results.find((r) => r.vehicleId === "bmw430i") ?? results[0];
+  const baselineVehicle =
+    vehicles.find((v) => v.id === baseline?.vehicleId) ?? vehicles[0];
 
   const overage = annualMiles(driving) > driving.leaseAllowanceAnnual;
 
-  // Headline savings vs BMW: largest saver in active scenario.
-  const headline = useMemo(() => {
-    if (!baseline) return null;
-    let best: { id: string; delta: number } | null = null;
-    for (const r of results) {
-      if (r.vehicleId === baseline.vehicleId) continue;
-      const delta = baseline.threeYearTotal - r.threeYearTotal;
-      if (!best || delta > best.delta) best = { id: r.vehicleId, delta };
-    }
-    if (!best || best.delta <= 0) return null;
-    const v = vehicles.find((x) => x.id === best!.id);
-    return v ? { vehicleName: v.shortName, delta: best.delta } : null;
-  }, [results, vehicles, baseline]);
+  // Cheapest 3-yr total = the "winner" surfaced in the hero. Falls back to
+  // baseline if everything is identical so the hero never goes empty.
+  const winner = useMemo(() => {
+    if (results.length === 0) return null;
+    let best = results[0];
+    for (const r of results) if (r.threeYearTotal < best.threeYearTotal) best = r;
+    return best;
+  }, [results]);
+  const winnerVehicle = winner
+    ? vehicles.find((v) => v.id === winner.vehicleId) ?? vehicles[0]
+    : null;
+  const winnerSavings =
+    baseline && winner && winner.vehicleId !== baseline.vehicleId
+      ? baseline.threeYearTotal - winner.threeYearTotal
+      : 0;
+
+  // Smooth scroll to the editable section. Using a ref + scrollIntoView keeps
+  // the URL clean (no #fragment) and feels right on iOS Safari.
+  const editRef = useRef<HTMLDivElement | null>(null);
+  const scrollToEdit = () => {
+    editRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6 sm:py-8">
-      <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <div className="text-[11px] uppercase tracking-widest text-muted">
-            Portland, OR · 3-year lease · May 2026 market data
+    <div className="mx-auto max-w-6xl px-4 pb-8 pt-4 sm:px-6 sm:pt-6">
+      {/* ───────── HERO ───────── */}
+      <section
+        aria-label="Headline answer"
+        className="flex flex-col gap-3"
+        style={{ minHeight: "calc(100svh - 1.5rem)" }}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.18em] text-muted">
+              3-year cost · Portland, OR · May 2026
+            </div>
+            <h1 className="mt-0.5 text-[22px] font-semibold leading-tight sm:text-2xl">
+              Lease vs EV: which one wins?
+            </h1>
           </div>
-          <h1 className="mt-1 text-2xl font-semibold sm:text-3xl">
-            Car cost comparison: lease, fuel, insurance &amp; total spend
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted">
-            Side-by-side 3-year cost of ownership for any cars you want to
-            compare. All numbers are editable and persist in the URL — share
-            the link and the recipient sees your exact scenario. Math follows
-            EPA MPGe (33.7 kWh / gal); down payments are amortized into the
-            effective monthly cost.
-          </p>
+          <ShareBar />
         </div>
-        <ShareBar />
-      </header>
 
-      <div className="mb-4 rounded-lg border border-line bg-panel/60 p-3 text-sm text-muted">
-        <strong className="font-semibold text-fg">Work-travel reimbursement caveat:</strong>{" "}
-        work mileage gets reimbursed at the IRS rate (variable cost — fuel +
-        per-mile wear), but the <em>lease payment itself is fixed</em>{" "}
-        regardless of how you drive. Picking a more expensive lease costs the
-        extra premium × 36 in pure out-of-pocket spend that reimbursement
-        does not cover. Insurance and unreimbursed maintenance widen the gap.
-      </div>
+        {/* Verdict card — the punchy answer. */}
+        {winnerVehicle && winner && baseline && baselineVehicle && (
+          <div
+            className="relative overflow-hidden rounded-2xl border bg-panel p-4 sm:p-5"
+            style={{
+              borderColor: winnerVehicle.color,
+              boxShadow: `0 1px 0 ${winnerVehicle.color}22, 0 8px 24px -16px ${winnerVehicle.color}55`,
+            }}
+          >
+            <div
+              className="absolute inset-x-0 top-0 h-1"
+              style={{ background: winnerVehicle.color }}
+            />
+            <div className="text-[10px] uppercase tracking-[0.18em] text-muted">
+              {winner.vehicleId === baseline.vehicleId
+                ? "Cheapest over 3 years"
+                : `Cheapest vs ${baselineVehicle.shortName}`}
+            </div>
+            <div className="mt-1 flex items-baseline gap-2">
+              <span
+                className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ background: winnerVehicle.color }}
+              />
+              <h2 className="truncate text-xl font-semibold sm:text-2xl">
+                {winnerVehicle.name}
+              </h2>
+            </div>
+            {winnerSavings > 0 ? (
+              <div className="mt-2 flex flex-wrap items-baseline gap-x-2">
+                <span className="font-mono text-[34px] font-semibold leading-none text-accent sm:text-[40px]">
+                  {fmtMoney(winnerSavings)}
+                </span>
+                <span className="text-sm text-muted">
+                  cheaper than {baselineVehicle.shortName} over 36 months
+                </span>
+              </div>
+            ) : (
+              <div className="mt-2 text-sm text-muted">
+                Lowest 3-year total in this scenario.
+              </div>
+            )}
+            <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-[12px] text-muted">
+              <div>
+                <span className="text-muted">Monthly</span>{" "}
+                <span className="font-mono text-fg">
+                  {fmtMoney(winner.monthly.total)}
+                </span>
+              </div>
+              <div>
+                <span className="text-muted">3-yr total</span>{" "}
+                <span className="font-mono text-fg">
+                  {fmtMoney(winner.threeYearTotal)}
+                </span>
+              </div>
+              <div>
+                <span className="text-muted">{activeScenario.label} energy</span>{" "}
+                <span className="font-mono text-fg">
+                  {winnerVehicle.isGas
+                    ? `$${activeScenario.gasPrice.toFixed(2)}/gal`
+                    : `$${activeScenario.electricityRate.toFixed(2)}/kWh`}
+                </span>
+              </div>
+              <div>
+                <span className="text-muted">Driving</span>{" "}
+                <span className="font-mono text-fg">
+                  {fmtInt(monthlyMiles(driving))} mi/mo
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
 
-      {overage && (
-        <div className="mb-4 rounded-lg border border-warn/40 bg-warn/[0.06] p-3 text-sm text-warn">
-          <strong className="font-semibold">Mileage gotcha:</strong>{" "}
-          {fmtInt(annualMiles(driving))} mi / yr exceeds the{" "}
-          {fmtInt(driving.leaseAllowanceAnnual)} mi lease cap. At $
-          {driving.overagePerMile.toFixed(2)} / mi, every vehicle below carries
-          an extra{" "}
-          {fmtMoney(
-            ((annualMiles(driving) - driving.leaseAllowanceAnnual) *
-              driving.overagePerMile *
-              3),
-          )}{" "}
-          over 3 years unless you negotiate a higher allowance upfront.
+        {/* Compact chart — the visual argument. */}
+        <div className="rounded-2xl border border-line bg-panel p-3 sm:p-4">
+          <div className="flex items-baseline justify-between">
+            <h3 className="text-sm font-semibold">Cumulative cost</h3>
+            <span className="text-[10px] uppercase tracking-wider text-muted">
+              {activeScenario.label} energy · 0–36 mo
+            </span>
+          </div>
+          <div className="mt-1">
+            <TcoChart vehicles={vehicles} results={results} />
+          </div>
         </div>
-      )}
 
-      <div className="space-y-4">
+        {/* Standings row — at-a-glance comparison. 2 cols on phone so 4
+            vehicles fit cleanly without horizontal scroll. */}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {vehicles.map((v) => {
+            const r = results.find((x) => x.vehicleId === v.id);
+            if (!r) return null;
+            const isWinner = winner?.vehicleId === v.id;
+            return (
+              <div
+                key={v.id}
+                className={`rounded-xl border bg-panel p-2.5 ${
+                  isWinner ? "ring-1" : ""
+                }`}
+                style={{
+                  borderColor: isWinner ? v.color : undefined,
+                  ...(isWinner
+                    ? ({ "--tw-ring-color": v.color } as React.CSSProperties)
+                    : {}),
+                }}
+              >
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="inline-block h-2 w-2 shrink-0 rounded-full"
+                    style={{ background: v.color }}
+                  />
+                  <span className="truncate text-[11px] font-medium">
+                    {v.shortName}
+                  </span>
+                </div>
+                <div className="mt-1 font-mono text-[15px] font-semibold leading-tight">
+                  {fmtMoney(r.threeYearTotal)}
+                </div>
+                <div className="font-mono text-[10px] text-muted">
+                  {fmtMoney(r.monthly.total)}/mo
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {overage && (
+          <div className="rounded-lg border border-warn/40 bg-warn/[0.06] px-3 py-2 text-[12px] text-warn">
+            <strong className="font-semibold">Mileage gotcha:</strong>{" "}
+            {fmtInt(annualMiles(driving))} mi/yr exceeds the{" "}
+            {fmtInt(driving.leaseAllowanceAnnual)} mi cap — adds{" "}
+            {fmtMoney(
+              (annualMiles(driving) - driving.leaseAllowanceAnnual) *
+                driving.overagePerMile *
+                3,
+            )}{" "}
+            over 3 years on every lease.
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={scrollToEdit}
+          className="group mx-auto mt-auto flex items-center gap-2 rounded-full border border-line bg-panel px-4 py-2 text-sm font-medium text-fg shadow-sm transition-colors hover:border-muted"
+        >
+          Tweak your numbers
+          <ChevronDownIcon className="h-4 w-4 transition-transform group-hover:translate-y-0.5" />
+        </button>
+      </section>
+
+      {/* ───────── EDIT / DETAIL ───────── */}
+      <div ref={editRef} className="mt-8 scroll-mt-4 space-y-4">
+        <SectionHeader
+          kicker="Your inputs"
+          title="Customize the numbers"
+          body="Everything below is editable. The hero and chart above react in real time, and the URL captures your scenario so the share link reflects exactly what you see."
+        />
+
         <DrivingPanel
           driving={driving}
           onChange={(d) => setState({ ...state, driving: d })}
@@ -141,27 +288,6 @@ export default function App() {
           onChangeActiveKey={(k) => setState({ ...state, scenarioKey: k })}
         />
 
-        <section className="rounded-xl border border-line bg-panel p-4">
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-base font-semibold">
-              Cumulative cost ({activeScenario.label.toLowerCase()} energy)
-            </h2>
-            <div className="text-[11px] text-muted">
-              {fmtInt(monthlyMiles(driving))} mi / mo · 36-month lease
-            </div>
-          </div>
-          {headline && (
-            <div className="mt-2 text-sm text-accent">
-              {headline.vehicleName} saves{" "}
-              <span className="font-semibold">{fmtMoney(headline.delta)}</span>{" "}
-              vs BMW 430i over 3 years.
-            </div>
-          )}
-          <div className="mt-3">
-            <TcoChart vehicles={vehicles} results={results} />
-          </div>
-        </section>
-
         <section>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-base font-semibold">Vehicles</h2>
@@ -182,7 +308,6 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => {
-                  // Restore the original 3-vehicle defaults; preserve driving / scenarios.
                   setState({
                     ...state,
                     vehicles: DEFAULT_VEHICLES.map((v) => ({ ...v })),
@@ -232,15 +357,73 @@ export default function App() {
           scenarioLabel={activeScenario.label}
         />
 
-        <footer className="pb-8 pt-4 text-center text-[11px] text-muted">
-          Calc:{" "}
-          <code className="text-muted">
-            monthly = lease + miles/MPG × $gas (or miles × 33.7/MPGe × $/kWh) +
-            insurance + maint/12 + overage
-          </code>
+        {/* Work-travel reimbursement caveat — moved from top to here per the
+            user's note that it's read-once context, not in-flight UI. */}
+        <section className="rounded-xl border border-line bg-panel2/60 p-4 text-[13px] text-muted">
+          <div className="text-[10px] uppercase tracking-[0.18em] text-muted">
+            Notes
+          </div>
+          <p className="mt-2">
+            <strong className="font-semibold text-fg">
+              Work-travel reimbursement:
+            </strong>{" "}
+            work mileage gets reimbursed at the IRS rate (variable cost — fuel +
+            per-mile wear), but the <em>lease payment itself is fixed</em>{" "}
+            regardless of how you drive. Picking a more expensive lease costs the
+            extra premium × 36 in pure out-of-pocket spend that reimbursement
+            does not cover. Insurance and unreimbursed maintenance widen the gap.
+          </p>
+          <p className="mt-2 text-[12px]">
+            Calc:{" "}
+            <code className="text-fg/80">
+              monthly = lease + miles/MPG × $gas (or miles × 33.7/MPGe × $/kWh) +
+              insurance + maint/12 + overage
+            </code>
+          </p>
+        </section>
+
+        <footer className="pb-4 pt-2 text-center text-[11px] text-muted">
+          All numbers persist in the URL. Math follows EPA MPGe (33.7 kWh/gal).
         </footer>
       </div>
     </div>
+  );
+}
+
+function SectionHeader({
+  kicker,
+  title,
+  body,
+}: {
+  kicker: string;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="border-t border-line pt-6">
+      <div className="text-[10px] uppercase tracking-[0.18em] text-muted">
+        {kicker}
+      </div>
+      <h2 className="mt-1 text-lg font-semibold">{title}</h2>
+      <p className="mt-1 max-w-2xl text-sm text-muted">{body}</p>
+    </div>
+  );
+}
+
+function ChevronDownIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <path d="M5 8l5 5 5-5" />
+    </svg>
   );
 }
 

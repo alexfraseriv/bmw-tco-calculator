@@ -38,12 +38,17 @@ const averageScenario = (): EnergyScenario => {
 // pricing-engineer's current defaults.ts uses more conservative lease + down
 // payment figures, so the sanity-table assertions construct vehicles
 // matching BRIEF §9 directly rather than relying on defaults.
+// BRIEF fixtures are leases (mileage cap applies). Pin financingType
+// explicitly so the type system stays happy and so a future model-layer
+// change to require a non-optional financingType doesn't quietly flip
+// these to "loan" defaults.
 const briefBmw: Vehicle = {
   id: "bmw430i",
   name: "BMW 430i",
   shortName: "BMW 430i",
   color: "#000",
   msrp: 57290,
+  financingType: "lease",
   monthlyLease: 550,
   downPayment: 0,
   apr: 0,
@@ -60,6 +65,7 @@ const briefIoniq: Vehicle = {
   shortName: "IONIQ 6",
   color: "#000",
   msrp: 53000,
+  financingType: "lease",
   monthlyLease: 425,
   downPayment: 0,
   apr: 0,
@@ -121,6 +127,24 @@ describe("mileage overage", () => {
     expect(monthlyOverageCost(p18k)).toBeCloseTo(125.0, 2);
     // = 6,000 × 0.25 / 12
     expect(monthlyOverageCost(p18k)).toBeCloseTo((6000 * 0.25) / 12, 6);
+  });
+
+  it("loan vehicles ignore the mileage cap (overage = 0) even at 18k mi/yr; lease at same driving = $126/mo", () => {
+    // Same 18,048 mi/yr profile as `briefDriving`. The lease vehicle
+    // sees the cap; the loan vehicle owns the car and skips overage.
+    const leaseVehicle: Vehicle = { ...briefBmw, financingType: "lease" };
+    const loanVehicle: Vehicle = { ...briefBmw, financingType: "loan" };
+    const s = averageScenario();
+    const leaseM = monthlyBreakdown(leaseVehicle, briefDriving, s);
+    const loanM = monthlyBreakdown(loanVehicle, briefDriving, s);
+    expect(leaseM.overage).toBeCloseTo(126.0, 2);
+    expect(loanM.overage).toBe(0);
+    // Every other component should match exactly — only `overage` differs.
+    expect(leaseM.lease).toBeCloseTo(loanM.lease, 6);
+    expect(leaseM.fuel).toBeCloseTo(loanM.fuel, 6);
+    expect(leaseM.insurance).toBeCloseTo(loanM.insurance, 6);
+    expect(leaseM.maintenance).toBeCloseTo(loanM.maintenance, 6);
+    expect(leaseM.total - loanM.total).toBeCloseTo(126.0, 2);
   });
 });
 

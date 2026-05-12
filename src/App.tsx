@@ -31,6 +31,7 @@ function makeBlankVehicle(existingIds: string[]): Vehicle {
     shortName: `Custom ${n}`,
     color,
     msrp: 50000,
+    financingType: "lease",
     monthlyLease: 500,
     downPayment: 0,
     apr: 7,

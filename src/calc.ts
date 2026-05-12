@@ -70,7 +70,11 @@ export function monthlyBreakdown(
   const fuel = monthlyFuelCost(v, p, s);
   const insurance = v.monthlyInsurance;
   const maintenance = v.annualMaintenance / 12;
-  const overage = monthlyOverageCost(p);
+  // Mileage overage only applies to leases. Loans (and "keep current
+  // car" scenarios) own the vehicle; no contractual mile cap. We default
+  // `financingType` to "lease" when undefined to preserve historical
+  // behavior for vehicles that pre-date this field.
+  const overage = v.financingType === "loan" ? 0 : monthlyOverageCost(p);
   const total =
     lease + amortizedDown + opportunityCost + fuel + insurance + maintenance + overage;
   return {

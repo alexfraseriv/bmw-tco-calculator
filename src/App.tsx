@@ -478,7 +478,7 @@ function SalaryPanel({
 }) {
   return (
     <section className="rounded-xl border border-line bg-panel p-4">
-      <div className="flex items-baseline justify-between">
+      <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
         <h2 className="text-base font-semibold">Salary &amp; take-home</h2>
         <div className="text-[11px] text-muted">
           {usingOverride
@@ -543,69 +543,96 @@ function SalaryPanel({
             min={0}
           />
         )}
-        <div className="rounded-md border border-line bg-panel2 p-3">
+        <div className="flex flex-col rounded-md border border-line bg-panel2 p-3">
           <div className="text-[11px] uppercase tracking-wider text-muted">
             Monthly take-home
           </div>
           <div className="mt-1 font-mono text-lg font-semibold">
             {fmtMoney(takeHome.monthlyTakeHome)}
           </div>
-          <div className="mt-1 text-[11px] text-muted">
-            {usingOverride
-              ? "Entered directly — tax breakdown skipped"
-              : `Federal + OR state + FICA · effective rate ${(
-                  takeHome.effectiveRate * 100
-                ).toFixed(1)}%`}
-          </div>
+          {usingOverride ? (
+            <div className="mt-1 text-[11px] text-muted">
+              Entered directly — tax breakdown skipped
+            </div>
+          ) : (
+            <div className="mt-1 flex flex-col gap-0.5 text-[11px] text-muted">
+              <span>Federal + OR state + FICA</span>
+              <span>
+                Effective rate{" "}
+                <span className="font-mono text-fg/70">
+                  {(takeHome.effectiveRate * 100).toFixed(1)}%
+                </span>
+              </span>
+            </div>
+          )}
         </div>
-        <div className="rounded-md border border-line bg-panel2 p-3">
+        <div className="flex flex-col rounded-md border border-line bg-panel2 p-3">
           <div className="text-[11px] uppercase tracking-wider text-muted">
             Annual take-home
           </div>
           <div className="mt-1 font-mono text-lg font-semibold">
             {fmtMoney(takeHome.annualTakeHome)}
           </div>
-          <div className="mt-1 text-[11px] text-muted">
-            {usingOverride
-              ? "= monthly × 12"
-              : `Tax: ${fmtMoney(takeHome.totalTax)} (fed ${fmtMoney(
-                  takeHome.federalTax,
-                )} · OR ${fmtMoney(takeHome.oregonTax)} · FICA ${fmtMoney(
-                  takeHome.ficaSS + takeHome.ficaMedicare,
-                )})`}
-          </div>
+          {usingOverride ? (
+            <div className="mt-1 text-[11px] text-muted">= monthly × 12</div>
+          ) : (
+            <div className="mt-1 flex flex-col gap-0.5 text-[11px] text-muted">
+              <span>
+                Total tax{" "}
+                <span className="font-mono text-fg/70">
+                  {fmtMoney(takeHome.totalTax)}
+                </span>
+              </span>
+              <span className="font-mono text-[10.5px] text-muted">
+                fed {fmtMoney(takeHome.federalTax)} · OR{" "}
+                {fmtMoney(takeHome.oregonTax)} · FICA{" "}
+                {fmtMoney(takeHome.ficaSS + takeHome.ficaMedicare)}
+              </span>
+            </div>
+          )}
         </div>
       </div>
       <div className="mt-4">
-        <div className="mb-1 text-[11px] uppercase tracking-wider text-muted">
+        <div className="mb-2 text-[11px] uppercase tracking-wider text-muted">
           Monthly vehicle cost vs take-home
         </div>
-        <div className="space-y-1.5">
+        <div className="space-y-3">
           {vehiclesMonthly.map((v) => {
             const pct =
               takeHome.monthlyTakeHome > 0
                 ? (v.monthly / takeHome.monthlyTakeHome) * 100
                 : 0;
             return (
-              <div key={v.name} className="flex items-center gap-2 text-sm">
-                <span
-                  className="inline-block h-2 w-2 rounded-full"
-                  style={{ background: v.color }}
-                />
-                <span className="w-32 shrink-0 truncate">{v.name}</span>
-                <div className="relative h-2 flex-1 overflow-hidden rounded bg-panel2">
+              <div key={v.name} className="text-sm">
+                {/* Top row: name (left) + dollar (right). Bar lives on its
+                    own row underneath with full width so it can breathe. */}
+                <div className="flex items-baseline justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span
+                      className="inline-block h-2 w-2 shrink-0 rounded-full"
+                      style={{ background: v.color }}
+                    />
+                    <span className="truncate text-[13px]">{v.name}</span>
+                  </div>
+                  <div className="flex shrink-0 items-baseline gap-1.5 whitespace-nowrap">
+                    <span className="font-mono text-[13px] font-semibold">
+                      {fmtMoney(v.monthly)}
+                    </span>
+                    <span className="font-mono text-[11px] text-muted">
+                      {pct.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+                <div className="relative mt-1.5 h-2 w-full overflow-hidden rounded bg-panel2">
                   <div
                     className="absolute inset-y-0 left-0 rounded"
                     style={{
                       width: `${Math.min(100, pct)}%`,
                       background: v.color,
-                      opacity: 0.7,
+                      opacity: 0.75,
                     }}
                   />
                 </div>
-                <span className="w-24 shrink-0 text-right font-mono text-[12px]">
-                  {fmtMoney(v.monthly)} · {pct.toFixed(1)}%
-                </span>
               </div>
             );
           })}

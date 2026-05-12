@@ -42,17 +42,28 @@ export function NumberInput({
         {label}
       </span>
       <div
-        className={`mt-1 flex items-center rounded-md border bg-panel2 px-2 py-1.5 transition-colors ${
+        className={`mt-1 flex items-baseline gap-1 rounded-md border bg-panel2 px-2.5 py-2 transition-colors ${
           warn ? "border-warn/60" : "border-line focus-within:border-muted"
         }`}
       >
-        {prefix && <span className="mr-1 text-muted text-sm">{prefix}</span>}
+        {prefix && (
+          <span className="shrink-0 text-[14px] leading-none text-muted">
+            {prefix}
+          </span>
+        )}
         <input
           type="number"
           inputMode="decimal"
           step={step}
           min={min}
-          className="w-full bg-transparent text-base outline-none"
+          // `min-w-0` so the input shrinks inside flex without forcing a
+          // suffix off-screen; `flex-1` lets the value claim the
+          // remaining row. Right-align values when a suffix is present so
+          // short numbers (`4`, `7`) sit next to the unit instead of
+          // stranding a wide gap. Left-align is fine for prefix-only.
+          className={`min-w-0 flex-1 bg-transparent text-[15px] leading-none outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
+            suffix ? "text-right" : "text-left"
+          }`}
           value={text}
           onChange={(e) => {
             const raw = e.target.value;
@@ -69,7 +80,11 @@ export function NumberInput({
             }
           }}
         />
-        {suffix && <span className="ml-1 text-muted text-sm">{suffix}</span>}
+        {suffix && (
+          <span className="shrink-0 whitespace-nowrap text-[12px] leading-none text-muted">
+            {suffix}
+          </span>
+        )}
       </div>
       {hint && (
         <span className={`mt-1 block text-[11px] ${warn ? "text-warn" : "text-muted"}`}>

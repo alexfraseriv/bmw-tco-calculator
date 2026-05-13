@@ -11,7 +11,8 @@ import { NumberInput } from "./NumberInput";
 interface Props {
   vehicle: Vehicle;
   result: VehicleResult;
-  baselineResult?: VehicleResult; // BMW 430i (or first vehicle), used for delta
+  baselineResult?: VehicleResult; // baseline vehicle (defaults to first), used for delta
+  baselineName?: string; // display name of the baseline vehicle for delta copy
   scenario: EnergyScenario;
   driving: DrivingProfile;
   onChange: (next: Vehicle) => void;
@@ -22,6 +23,7 @@ export function VehicleCard({
   vehicle,
   result,
   baselineResult,
+  baselineName,
   scenario,
   onChange,
   onRemove,
@@ -180,17 +182,17 @@ export function VehicleCard({
         >
           {saves && (
             <>
-              Saves <span className="font-semibold">{fmtMoney(delta)}</span> vs BMW 430i
+              Saves <span className="font-semibold">{fmtMoney(delta)}</span> vs {baselineName ?? "baseline"}
               <span className="text-muted"> over 3 years</span>
             </>
           )}
           {adds && (
             <>
               Costs <span className="font-semibold">{fmtMoney(-delta)}</span> more
-              <span className="text-muted"> than BMW 430i over 3 years</span>
+              <span className="text-muted"> than {baselineName ?? "baseline"} over 3 years</span>
             </>
           )}
-          {!saves && !adds && <>Same 3-year total as BMW 430i</>}
+          {!saves && !adds && <>Same 3-year total as {baselineName ?? "baseline"}</>}
         </div>
       )}
     </article>

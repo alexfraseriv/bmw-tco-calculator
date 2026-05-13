@@ -125,13 +125,21 @@ export default function App() {
         className="flex flex-col gap-3"
         style={{ minHeight: "calc(100svh - 1.5rem)" }}
       >
+        <div className="mb-2 flex items-center justify-between gap-3 text-[11px]">
+          <a
+            href="https://alexfraseriv.github.io/"
+            className="inline-flex items-center gap-1 text-muted transition-colors hover:text-fg"
+          >
+            <span aria-hidden="true">←</span> Portfolio
+          </a>
+        </div>
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="text-[10px] uppercase tracking-[0.18em] text-muted">
-              3-year cost · Portland, OR · May 2026
+              3-year cost · side-by-side
             </div>
             <h1 className="mt-0.5 text-[22px] font-semibold leading-tight sm:text-2xl">
-              Lease vs EV: which one wins?
+              Compare any cars — lease, loan, or keep your current one.
             </h1>
           </div>
           <ShareBar />
@@ -372,6 +380,7 @@ export default function App() {
                   vehicle={v}
                   result={r}
                   baselineResult={baseline}
+                  baselineName={baselineVehicle?.shortName}
                   scenario={activeScenario}
                   driving={driving}
                   onChange={(next) => {

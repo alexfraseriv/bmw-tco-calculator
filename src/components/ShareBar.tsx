@@ -9,7 +9,7 @@ export function ShareBar() {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: "BMW 430i vs EV — 3-Year TCO",
+          title: "Car cost compare — 3-year TCO",
           url,
         });
         return;

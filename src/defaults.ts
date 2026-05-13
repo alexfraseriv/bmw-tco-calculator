@@ -1,14 +1,12 @@
 import type { DrivingProfile, EnergyScenario, Vehicle } from "./types";
 
 // ---------------------------------------------------------------------------
-// Vehicle catalog. Adding a new vehicle: append one object here. The rest of
-// the app is fully driven by this array.
-//
-// Lease numbers reflect actual May 2026 market data (sources: BMW USA
-// 4-Series Coupe Lease offer; Hyundai IONIQ 6 Limited AWD owner-reported
-// deals on ioniqforum.com after 2026 incentive rollback; Polestar 3
-// May–June 2026 promo). All numbers are editable in-app; the URL params
-// preserve any overrides so a tweaked link captures the user's quote.
+// Default vehicle catalog. These are concrete examples seeded from a real
+// May-2026 Portland-OR negotiation (BMW 4 Series lease vs IONIQ 6 / EV6 +
+// keep-current-X1). Every field is editable in the UI, and the URL params
+// preserve overrides so a tweaked link captures the user's own numbers.
+// Adding a new vehicle: append one object here — the rest of the app loops
+// over this array and picks up the new entry in the chart, table, and cards.
 // ---------------------------------------------------------------------------
 export const DEFAULT_VEHICLES: Vehicle[] = [
   {
@@ -16,11 +14,11 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     name: "BMW 4 Series (2025 demo, 9k mi)",
     shortName: "BMW 4 Series",
     color: "#3b82f6",
-    // Pulled from the user's actual dealer worksheet (Option 1, lease,
-    // $0 down option circled). Negotiated price $49,999 + $215 doc fee +
-    // $423.63 DMV fees − $6,432 net trade equity → $45,204.63 balance
-    // capitalized into the lease. 36-mo @ money factor .0024
-    // (= 5.76% APR) → $558.57/mo at $0 down. 10k mi/yr allowance.
+    // Sample dealer worksheet (Option 1, lease, $0 down). Negotiated price
+    // $49,999 + $215 doc fee + $423.63 DMV fees − $6,432 net trade equity
+    // → $45,204.63 balance capitalized into the lease. 36-mo @ money
+    // factor .0024 (= 5.76% APR) → $558.57/mo at $0 down. 10k mi/yr
+    // allowance. Replace with your own quote.
     msrp: 49999,
     financingType: "lease",
     monthlyLease: 558.57,
@@ -53,7 +51,7 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
     fuelType: "electric",
   },
   {
-    // "Keep the current car" scenario. The car is a 2017 BMW X1 with 37k
+    // Example "keep the current car" scenario — a 2017 BMW X1 with 37k
     // miles, financed (not leased): $314/mo for 14 more months, then
     // owned outright (~$4,300 remaining principal). After payoff, monthly
     // car-payment cost drops to $0 for the rest of the 36-month window.
@@ -120,16 +118,16 @@ export const DEFAULT_VEHICLES: Vehicle[] = [
 ];
 
 export const DEFAULT_DRIVING: DrivingProfile = {
-  // Historical baseline from the user's friend: 2017 X1 at 37k miles over
-  // 9 years ≈ 4,100 mi/yr ≈ 350 mi/mo. Bellevue work trips are NOT in
-  // this default — the friend will start adding them when the new job
-  // requires it. Bump `tripsPerMonth` to 2 (or whatever) to model that.
-  roundTripMiles: 352, // Portland <-> Bellevue, kept ready for the user
+  // Sample low-mileage profile: ~4,100 mi/yr ≈ 350 mi/mo, with a 352-mi
+  // round-trip "work commute" slot pre-filled but set to 0 trips/mo so it
+  // only activates when the user bumps `tripsPerMonth`. Tweak any field
+  // in-app; everything is editable.
+  roundTripMiles: 352,
   tripsPerMonth: 0,
   otherMonthlyMiles: 350,
-  // The BMW lease worksheet shows a 10,000 mi/yr Mileage Program — the
-  // friend's actual cap, not the 12k industry-standard. Set the default
-  // to match so the overage warning fires honestly.
+  // 10,000 mi/yr matches a real-world BMW lease worksheet (lower than the
+  // 12k industry-standard) so the overage warning fires honestly on
+  // high-mileage drivers. Raise to 12k/15k if your lease offer differs.
   leaseAllowanceAnnual: 10000,
   overagePerMile: 0.25,
 };

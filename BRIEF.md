@@ -1,14 +1,19 @@
-# BMW 430i vs EV Total Cost of Ownership Calculator
+# Car Cost Compare — Project Brief
 
-**Handoff Document — May 12, 2026**
+**Original handoff document — May 12, 2026**
+
+> This brief seeded the app and is preserved for historical context. The seed
+> scenario was a Portland-OR buyer weighing a 2026 BMW 430i against
+> "premium-feel" EV alternatives. The app itself is generic — every input is
+> editable, anyone can compare any cars.
 
 ---
 
-## 1. Project Brief
+## 1. Project Brief (seed scenario)
 
-A friend in Portland, OR is evaluating a 2026 BMW 430i (cash purchase or 3-year lease at ~$550/mo). His job requires driving from Portland to Bellevue, WA twice per month, plus driving around Bellevue while there for two weeks each month. He wants to understand the full total cost of ownership (TCO) and compare against luxury-feel EV alternatives (Hyundai IONIQ 6, Polestar 3).
+A buyer in Portland, OR is evaluating a 2026 BMW 430i (cash purchase or 3-year lease at ~$550/mo). The job requires driving from Portland to Bellevue, WA twice per month, plus driving around Bellevue while there for two weeks each month. The buyer wants to understand the full total cost of ownership (TCO) and compare against luxury-feel EV alternatives (Hyundai IONIQ 6, Polestar 3).
 
-**Goal:** Build a shareable calculator (sendable via WhatsApp) that lets him plug in his own driving numbers and compare 3-year TCO across multiple vehicles and energy-price scenarios.
+**Goal:** Build a shareable calculator (sendable via WhatsApp) that lets the buyer plug in their own driving numbers and compare 3-year TCO across multiple vehicles and energy-price scenarios.
 
 ---
 

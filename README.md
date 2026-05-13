@@ -1,13 +1,17 @@
-# BMW 430i vs EV — 3-Year TCO Calculator
+# Car cost compare — 3-year TCO calculator
 
 Mobile-first, single-page React app that compares the 3-year total cost of
-ownership of a 2026 BMW 430i lease against EV alternatives (Hyundai IONIQ 6,
-Polestar 3 by default — easy to add more).
+ownership of any set of vehicles side by side. Mix leases, loans, and
+"keep my current car" — the math accounts for each.
+
+The default catalog is the brief that seeded the app (BMW 4 Series lease vs
+IONIQ 6 / EV6 / a current 2017 X1) but every input is editable in the UI,
+and an **+ Add vehicle** button lets you compare anything else.
 
 All math runs client-side. State serializes into URL params, so any link is a
 fully customized scenario the recipient can open and edit.
 
-Live (after first deploy): https://alexfraseriv.github.io/bmw-tco-calculator/
+Live: https://alexfraseriv.github.io/car-cost-compare/
 
 ## Stack
 
@@ -30,30 +34,14 @@ npm run preview  # serve the production build locally
 The repo includes `.github/workflows/deploy.yml` which builds and publishes
 `dist/` to GitHub Pages on every push to `main`.
 
-First-time setup:
-
-```bash
-# from inside this folder, after `git init && git add . && git commit`
-gh repo create alexfraseriv/bmw-tco-calculator --public --source=. --remote=origin --push
-```
-
-The workflow needs Pages set to **GitHub Actions** as the source. If the first
-run errors with "Pages not enabled", visit:
-
-```
-Settings → Pages → Build and deployment → Source: GitHub Actions
-```
-
-…and re-run the workflow. After that, every `git push` redeploys automatically.
-
-The Vite build is configured with `base: '/bmw-tco-calculator/'` so asset URLs
-resolve correctly under the project-pages subpath.
+The Vite build is configured with `base: '/car-cost-compare/'` so asset URLs
+resolve correctly under the project-pages subpath. If you fork this and rename
+the repo, update that string in `vite.config.ts`.
 
 ### Alternative: Vercel
 
-Static SPA, so `vercel` from this folder also works (you'd want to drop the
-`base` override or move to a custom domain). GitHub Pages is the default
-target.
+Static SPA, so `vercel` from this folder also works (drop the `base` override
+or move to a custom domain). GitHub Pages is the default target.
 
 ## Data model
 
@@ -129,19 +117,15 @@ Append one object to `DEFAULT_VEHICLES` in `src/defaults.ts`:
 }
 ```
 
-That's it — table, chart, and per-card delta vs the BMW 430i pick it up
-automatically. Users can also add an ad-hoc vehicle in the UI via the **+ Add
-vehicle** button; their changes are captured in the URL.
+That's it — table, chart, and per-card delta pick it up automatically. Users
+can also add an ad-hoc vehicle in the UI via the **+ Add vehicle** button;
+their changes are captured in the URL.
 
 ## Known data caveats
 
-- **Polestar 3 MPGe**: spec sheet ranges 78–85 depending on trim/wheels. The
-  brief used ~80 combined; this app uses 80. Override per-vehicle if needed.
-- **IONIQ 6 MPGe**: the Limited RWD is rated 117 combined; the brief's
-  "117 combined (151/120)" line mixed the city/highway from a different trim.
-  This app uses 117 and lets the user edit.
-- **Insurance and lease**: placeholders. Quote-verify before treating any
-  total as gospel.
+The default catalog reflects a specific 2026 Portland-OR negotiation context
+(see `BRIEF.md`). Treat numbers as illustrative starting points — every field
+is editable and the share-link captures your overrides.
 
 ## License
 
